@@ -738,7 +738,7 @@ dependencies = [
 
 [[package]]
 name = "fpt-cli"
-version = "0.2.24"
+version = "0.2.25"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -763,7 +763,7 @@ dependencies = [
 
 [[package]]
 name = "fpt-core"
-version = "0.2.24"
+version = "0.2.25"
 dependencies = [
  "serde",
  "serde_json",
@@ -772,7 +772,7 @@ dependencies = [
 
 [[package]]
 name = "fpt-domain"
-version = "0.2.24"
+version = "0.2.25"
 dependencies = [
  "async-trait",
  "fpt-core",
@@ -2290,9 +2290,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
+checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
 
 [[package]]
 name = "serde"
