@@ -160,6 +160,7 @@ CLI 默认优先使用 `FPT_*` 前缀；当 `FPT_*` 缺失时，也支持回退�
 - `FPT_PASSWORD` / `SG_PASSWORD`
 - `FPT_AUTH_TOKEN` / `SG_AUTH_TOKEN`：站点启用 2FA 时可选
 - `FPT_SESSION_TOKEN` / `SG_SESSION_TOKEN`
+- `FPT_PROFILE` / `SG_PROFILE`：由 `fpt auth login` 创建的安全本地凭据 profile
 - `FPT_API_VERSION` / `SG_API_VERSION`（可选，默认 `v1.1`）
 
 ### 认证模式
@@ -167,6 +168,20 @@ CLI 默认优先使用 `FPT_*` 前缀；当 `FPT_*` 缺失时，也支持回退�
 - **script**：使用 `script_name + script_key` 走 `client_credentials`
 - **user_password**：使用 `username + password` 走 `password` grant
 - **session_token**：使用已有 `session_token` 走 `session_token` grant
+
+### 安全本地用户 Profile（Agent 推荐）
+
+对于 Autodesk Identity/Oxygen 站点，在用户工作站创建 profile。`--open-browser` 会打开 FPT
+站点供用户登录并完成所需的 PAT 配置；随后仅在本地终端读取敏感信息，并将其保存到操作系统凭据库。
+
+```bash
+fpt auth login --profile gamedemo --site https://gamedemo.shotgrid.autodesk.com \
+  --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile gamedemo
+fpt auth logout --profile gamedemo
+```
+
+Agent 和适配器只接收 `FPT_PROFILE=gamedemo`，不会获得密码、PAT 或 session token。
 
 如果没有显式传入 `--auth-mode`，CLI 会基于已有输入自动推断：
 
@@ -186,6 +201,9 @@ fpt inspect list --output json
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode script --script-name bot --script-key xxx
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode user-password --username user@example.com --password secret
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode session-token --session-token xxx
+fpt auth login --profile gamedemo --site https://gamedemo.shotgrid.autodesk.com --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile gamedemo
+fpt auth logout --profile gamedemo
 
 # 服务器
 fpt server info --site ...

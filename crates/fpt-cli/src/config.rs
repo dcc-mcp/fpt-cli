@@ -1,9 +1,16 @@
 use crate::cli::{ConfigClearArgs, ConfigCommands, ConfigSetArgs};
 use fpt_core::{AppError, Result};
 use fpt_domain::{
-    PersistedConnectionConfig, config_file_path, load_persisted_config, save_persisted_config,
+    AuthMode, ConnectionOverrides, PersistedConnectionConfig, PersistedConnectionProfile,
+    SecureProfileSecrets, config_file_path, load_persisted_config, remove_profile,
+    save_persisted_config, save_profile,
 };
 use serde_json::{Value, json};
+use std::{
+    env,
+    io::{self, Write},
+    process::Command,
+};
 
 pub fn run(command: ConfigCommands) -> Result<Value> {
     match command {
@@ -20,13 +27,163 @@ pub fn run(command: ConfigCommands) -> Result<Value> {
     }
 }
 
+pub fn login(overrides: ConnectionOverrides, open_browser: bool) -> Result<Value> {
+    let profile = required_login_value(overrides.profile.as_deref(), "--profile")?;
+    let env_site = env_value("FPT_SITE", "SG_SITE");
+    let site = required_login_value(overrides.site.as_deref().or(env_site.as_deref()), "--site")?;
+    let env_auth_mode = env_value("FPT_AUTH_MODE", "SG_AUTH_MODE");
+    let auth_mode = overrides
+        .auth_mode
+        .or(env_auth_mode.as_deref().map(str::parse).transpose()?)
+        .unwrap_or(AuthMode::UserPassword);
+
+    if open_browser {
+        open_site(&site)?;
+    }
+
+    let (script_name, username, secrets) = match auth_mode {
+        AuthMode::Script => {
+            let env_script_name = env_value("FPT_SCRIPT_NAME", "SG_SCRIPT_NAME");
+            let script_name = required_login_value(
+                overrides
+                    .script_name
+                    .as_deref()
+                    .or(env_script_name.as_deref()),
+                "--script-name",
+            )?;
+            let script_key = prompt_secret("FPT script key: ")?;
+            (
+                Some(script_name),
+                None,
+                SecureProfileSecrets {
+                    script_key: Some(script_key),
+                    ..Default::default()
+                },
+            )
+        }
+        AuthMode::UserPassword => {
+            let env_username = env_value("FPT_USERNAME", "SG_USERNAME");
+            let username = required_login_value(
+                overrides.username.as_deref().or(env_username.as_deref()),
+                "--username",
+            )?;
+            let password = prompt_secret("FPT legacy passphrase: ")?;
+            let auth_token = prompt_optional_secret(
+                "FPT personal access token or MFA code (leave empty when unused): ",
+            )?;
+            (
+                None,
+                Some(username),
+                SecureProfileSecrets {
+                    password: Some(password),
+                    auth_token,
+                    ..Default::default()
+                },
+            )
+        }
+        AuthMode::SessionToken => {
+            let session_token = prompt_secret("FPT session token: ")?;
+            (
+                None,
+                None,
+                SecureProfileSecrets {
+                    session_token: Some(session_token),
+                    ..Default::default()
+                },
+            )
+        }
+    };
+    let path = save_profile(
+        &profile,
+        PersistedConnectionProfile {
+            site: site.clone(),
+            auth_mode,
+            script_name,
+            username,
+            api_version: overrides.api_version,
+        },
+        secrets,
+    )?;
+    Ok(json!({
+        "command": "auth.login",
+        "profile": profile,
+        "site": site,
+        "auth_mode": auth_mode,
+        "credential_store": "system_keyring",
+        "browser_opened": open_browser,
+        "next_step": "Run `fpt user current --profile <profile>` to verify the authenticated user.",
+        "config_path": path.display().to_string(),
+    }))
+}
+
+pub fn logout(profile: Option<&str>) -> Result<Value> {
+    let profile = required_login_value(profile, "--profile")?;
+    let path = remove_profile(&profile)?;
+    Ok(json!({
+        "command": "auth.logout",
+        "profile": profile,
+        "config_path": path.display().to_string(),
+    }))
+}
+
+fn required_login_value(value: Option<&str>, flag: &str) -> Result<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| AppError::invalid_input(format!("`auth login` requires {flag}")))
+}
+
+fn prompt_secret(prompt: &str) -> Result<String> {
+    let value = rpassword::prompt_password(prompt).map_err(|error| {
+        AppError::internal(format!("could not read secure terminal input: {error}"))
+    })?;
+    required_login_value(Some(&value), "a non-empty secret")
+}
+
+fn prompt_optional_secret(prompt: &str) -> Result<Option<String>> {
+    let value = rpassword::prompt_password(prompt).map_err(|error| {
+        AppError::internal(format!("could not read secure terminal input: {error}"))
+    })?;
+    Ok((!value.trim().is_empty()).then_some(value))
+}
+
+fn env_value(primary: &str, fallback: &str) -> Option<String> {
+    env::var(primary)
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| {
+            env::var(fallback)
+                .ok()
+                .filter(|value| !value.trim().is_empty())
+        })
+}
+
+fn open_site(site: &str) -> Result<()> {
+    let mut command = if cfg!(target_os = "windows") {
+        Command::new("explorer.exe")
+    } else if cfg!(target_os = "macos") {
+        Command::new("open")
+    } else {
+        Command::new("xdg-open")
+    };
+    command.arg(site);
+    command.status().map_err(|error| {
+        AppError::internal(format!("could not open the default browser: {error}"))
+            .with_operation("open_auth_browser")
+            .with_hint("Open the Flow Production Tracking site manually, then rerun without --open-browser.")
+    })?;
+    io::stderr().flush().ok();
+    Ok(())
+}
+
 fn get_config() -> Result<Value> {
     let path = config_file_path()?;
     let config = load_persisted_config()?;
     Ok(json!({
         "command": "config.get",
         "path": path.display().to_string(),
-        "config": config,
+        "config": config_diagnostics(&config),
     }))
 }
 
@@ -70,7 +227,7 @@ fn set_config(args: ConfigSetArgs) -> Result<Value> {
     Ok(json!({
         "command": "config.set",
         "path": path.display().to_string(),
-        "config": config,
+        "config": config_diagnostics(&config),
     }))
 }
 
@@ -145,8 +302,23 @@ fn clear_config(args: ConfigClearArgs) -> Result<Value> {
     Ok(json!({
         "command": "config.clear",
         "path": path.display().to_string(),
-        "config": config,
+        "config": config_diagnostics(&config),
     }))
+}
+
+fn config_diagnostics(config: &PersistedConnectionConfig) -> Value {
+    json!({
+        "site": config.site,
+        "auth_mode": config.auth_mode,
+        "script_name": config.script_name,
+        "script_key": config.script_key.as_ref().map(|_| "<redacted>"),
+        "username": config.username,
+        "password": config.password.as_ref().map(|_| "<redacted>"),
+        "auth_token": config.auth_token.as_ref().map(|_| "<redacted>"),
+        "session_token": config.session_token.as_ref().map(|_| "<redacted>"),
+        "api_version": config.api_version,
+        "profiles": config.profiles,
+    })
 }
 
 fn has_any_set_arg(args: &ConfigSetArgs) -> bool {

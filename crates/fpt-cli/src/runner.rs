@@ -24,6 +24,8 @@ pub async fn run(cli: Cli) -> Result<Value> {
         },
         Commands::Auth(command) => match command {
             AuthCommands::Test => app.auth_test(connection).await,
+            AuthCommands::Login(args) => config::login(connection, args.open_browser),
+            AuthCommands::Logout => config::logout(connection.profile.as_deref()),
         },
         Commands::Server(command) => match command {
             ServerCommands::Info => app.server_info(connection).await,

@@ -160,6 +160,7 @@ The CLI prefers the `FPT_*` prefix and also supports `SG_*` as a fallback when `
 - `FPT_PASSWORD` / `SG_PASSWORD`
 - `FPT_AUTH_TOKEN` / `SG_AUTH_TOKEN`: optional when the site uses 2FA
 - `FPT_SESSION_TOKEN` / `SG_SESSION_TOKEN`
+- `FPT_PROFILE` / `SG_PROFILE`: secure local credential profile created by `fpt auth login`
 - `FPT_API_VERSION` / `SG_API_VERSION` (optional, default `v1.1`)
 
 ### Authentication modes
@@ -167,6 +168,21 @@ The CLI prefers the `FPT_*` prefix and also supports `SG_*` as a fallback when `
 - **script**: uses `script_name + script_key` with the `client_credentials` flow
 - **user_password**: uses `username + password` with the `password` grant
 - **session_token**: uses an existing `session_token` with the `session_token` grant
+
+### Secure local user profile (recommended for agents)
+
+For Autodesk Identity/Oxygen sites, create a profile on the user's workstation. `--open-browser`
+opens the FPT site so the user can sign in and complete any required PAT setup; secrets are then
+prompted locally and saved only in the operating system credential store.
+
+```bash
+fpt auth login --profile gamedemo --site https://gamedemo.shotgrid.autodesk.com \
+  --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile gamedemo
+fpt auth logout --profile gamedemo
+```
+
+Agents and adapters receive only `FPT_PROFILE=gamedemo`; they never receive the password, PAT, or session token.
 
 If `--auth-mode` is not provided explicitly, the CLI infers it from the available inputs:
 
@@ -186,6 +202,9 @@ fpt inspect list --output json
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode script --script-name bot --script-key xxx
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode user-password --username user@example.com --password secret
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode session-token --session-token xxx
+fpt auth login --profile gamedemo --site https://gamedemo.shotgrid.autodesk.com --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile gamedemo
+fpt auth logout --profile gamedemo
 
 # Server
 fpt server info --site ...

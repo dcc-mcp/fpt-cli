@@ -1,6 +1,6 @@
 use fpt_core::{AppError, Result};
 use serde::{Deserialize, Serialize};
-use std::{env, fs, path::PathBuf, str::FromStr};
+use std::{collections::BTreeMap, env, fs, path::PathBuf, str::FromStr};
 
 const DEFAULT_API_VERSION: &str = "v1.1";
 const CONFIG_FILE_NAME: &str = "config.json";
@@ -54,6 +54,7 @@ impl FromStr for AuthMode {
 
 #[derive(Debug, Clone, Default)]
 pub struct ConnectionOverrides {
+    pub profile: Option<String>,
     pub site: Option<String>,
     pub auth_mode: Option<AuthMode>,
     pub script_name: Option<String>,
@@ -85,6 +86,34 @@ pub struct PersistedConnectionConfig {
     pub session_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_version: Option<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub profiles: BTreeMap<String, PersistedConnectionProfile>,
+}
+
+/// Non-secret connection data for an agent-selectable local profile.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersistedConnectionProfile {
+    pub site: String,
+    pub auth_mode: AuthMode,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_version: Option<String>,
+}
+
+/// Secrets are kept in the operating system credential store, never in config.json.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SecureProfileSecrets {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_token: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -134,12 +163,21 @@ pub struct ConnectionSummary {
     pub auth_mode: AuthMode,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub principal: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
     pub api_version: String,
 }
 
 impl ConnectionSettings {
     pub fn resolve(overrides: ConnectionOverrides) -> Result<Self> {
         let persisted = load_persisted_config()?;
+        let profile_name = overrides
+            .profile
+            .clone()
+            .or_else(|| env_var_compat("FPT_PROFILE", "SG_PROFILE"));
+        if let Some(profile_name) = profile_name {
+            return resolve_profile(&persisted, &profile_name);
+        }
         let env_site = env_var_compat("FPT_SITE", "SG_SITE");
         let env_auth_mode = env_var_compat("FPT_AUTH_MODE", "SG_AUTH_MODE");
         let env_script_name = env_var_compat("FPT_SCRIPT_NAME", "SG_SCRIPT_NAME");
@@ -269,9 +307,163 @@ impl ConnectionSettings {
             site: self.site.clone(),
             auth_mode: self.auth_mode(),
             principal: self.credentials.principal(),
+            profile: None,
             api_version: self.api_version.clone(),
         }
     }
+}
+
+fn resolve_profile(
+    config: &PersistedConnectionConfig,
+    profile_name: &str,
+) -> Result<ConnectionSettings> {
+    let profile = config.profiles.get(profile_name).ok_or_else(|| {
+        AppError::invalid_input(format!("unknown FPT credential profile `{profile_name}`"))
+            .with_operation("resolve_connection_profile")
+            .with_invalid_field("profile")
+            .with_hint("Create it interactively with `fpt auth login --profile <name> --site <url> --auth-mode user-password`.")
+    })?;
+    let secrets = load_profile_secrets(profile_name)?;
+    let credentials = match profile.auth_mode {
+        AuthMode::Script => Credentials::Script {
+            script_name: required_profile_value(
+                profile.script_name.as_deref(),
+                profile_name,
+                "script_name",
+            )?,
+            script_key: required_secret_value(secrets.script_key, profile_name, "script key")?,
+        },
+        AuthMode::UserPassword => Credentials::UserPassword {
+            username: required_profile_value(
+                profile.username.as_deref(),
+                profile_name,
+                "username",
+            )?,
+            password: required_secret_value(secrets.password, profile_name, "legacy passphrase")?,
+            auth_token: secrets.auth_token.filter(|value| !value.trim().is_empty()),
+        },
+        AuthMode::SessionToken => Credentials::SessionToken {
+            session_token: required_secret_value(
+                secrets.session_token,
+                profile_name,
+                "session token",
+            )?,
+        },
+    };
+
+    Ok(ConnectionSettings {
+        site: profile.site.trim_end_matches('/').to_string(),
+        credentials,
+        api_version: api_version_or_default(profile.api_version.as_deref()),
+    })
+}
+
+pub fn save_profile(
+    profile_name: &str,
+    profile: PersistedConnectionProfile,
+    secrets: SecureProfileSecrets,
+) -> Result<PathBuf> {
+    validate_profile_name(profile_name)?;
+    let serialized = serde_json::to_string(&secrets).map_err(|error| {
+        AppError::internal(format!(
+            "could not serialize secure profile secrets: {error}"
+        ))
+        .with_operation("serialize_profile_secrets")
+    })?;
+    let entry = keyring::Entry::new("dcc-mcp/fpt-cli", profile_name).map_err(|error| {
+        AppError::internal(format!(
+            "could not access the system credential store: {error}"
+        ))
+        .with_operation("open_profile_keyring")
+    })?;
+    entry.set_password(&serialized).map_err(|error| {
+        AppError::internal(format!(
+            "could not save secure profile credentials: {error}"
+        ))
+        .with_operation("save_profile_secrets")
+        .with_hint("Unlock the operating system credential store and retry.")
+    })?;
+
+    let mut config = load_persisted_config()?;
+    config.profiles.insert(profile_name.to_string(), profile);
+    save_persisted_config(&config)
+}
+
+pub fn remove_profile(profile_name: &str) -> Result<PathBuf> {
+    validate_profile_name(profile_name)?;
+    let mut config = load_persisted_config()?;
+    if config.profiles.remove(profile_name).is_none() {
+        return Err(AppError::invalid_input(format!(
+            "unknown FPT credential profile `{profile_name}`"
+        ))
+        .with_operation("remove_connection_profile")
+        .with_invalid_field("profile"));
+    }
+    let entry = keyring::Entry::new("dcc-mcp/fpt-cli", profile_name).map_err(|error| {
+        AppError::internal(format!(
+            "could not access the system credential store: {error}"
+        ))
+        .with_operation("open_profile_keyring")
+    })?;
+    let _ = entry.delete_credential();
+    save_persisted_config(&config)
+}
+
+fn load_profile_secrets(profile_name: &str) -> Result<SecureProfileSecrets> {
+    let entry = keyring::Entry::new("dcc-mcp/fpt-cli", profile_name).map_err(|error| {
+        AppError::internal(format!(
+            "could not access the system credential store: {error}"
+        ))
+        .with_operation("open_profile_keyring")
+    })?;
+    let serialized = entry.get_password().map_err(|error| {
+        AppError::invalid_input(format!(
+            "secure credentials for FPT profile `{profile_name}` are unavailable: {error}"
+        ))
+        .with_operation("load_profile_secrets")
+        .with_hint("Run `fpt auth login --profile <name> ...` again on this machine.")
+    })?;
+    serde_json::from_str(&serialized).map_err(|error| {
+        AppError::invalid_input(format!(
+            "secure credentials for FPT profile `{profile_name}` are invalid: {error}"
+        ))
+        .with_operation("parse_profile_secrets")
+    })
+}
+
+fn required_profile_value(value: Option<&str>, profile_name: &str, field: &str) -> Result<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| {
+            AppError::invalid_input(format!("FPT profile `{profile_name}` is missing {field}"))
+                .with_operation("resolve_connection_profile")
+        })
+}
+
+fn required_secret_value(value: Option<String>, profile_name: &str, field: &str) -> Result<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            AppError::invalid_input(format!(
+                "FPT profile `{profile_name}` is missing secure {field}"
+            ))
+            .with_operation("resolve_connection_profile")
+            .with_hint("Run `fpt auth login --profile <name> ...` again on this machine.")
+        })
+}
+
+fn validate_profile_name(profile_name: &str) -> Result<()> {
+    if profile_name.trim().is_empty() || profile_name.len() > 128 {
+        return Err(AppError::invalid_input(
+            "profile must contain 1-128 non-whitespace characters",
+        )
+        .with_operation("validate_connection_profile")
+        .with_invalid_field("profile"));
+    }
+    Ok(())
 }
 
 pub fn api_version_or_default(value: Option<&str>) -> String {
