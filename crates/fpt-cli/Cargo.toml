@@ -15,6 +15,7 @@ flate2 = { workspace = true }
 fpt-core = { path = "../fpt-core" }
 fpt-domain = { path = "../fpt-domain" }
 reqwest = { workspace = true }
+rpassword = { workspace = true }
 self-replace = { workspace = true }
 semver = { workspace = true }
 serde = { workspace = true }

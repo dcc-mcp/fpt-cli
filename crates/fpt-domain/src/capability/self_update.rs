@@ -28,8 +28,9 @@ const CONFIG_CLEAR_EXAMPLES: &[&str] = &[
 
 const CONFIG_NOTES: &[&str] = &[
     "Persisted config is used when command-line flags and environment variables are not provided",
-    "Configuration is stored in a local JSON file and can include site, auth mode, credentials, and API version",
-    "Use `config clear` to remove saved secrets or other persisted values",
+    "Legacy configuration is stored in a local JSON file; use `auth login --profile` for new secrets",
+    "Configuration output redacts any legacy secrets",
+    "Use `config clear` to remove legacy values or `auth logout --profile` to remove secure profiles",
 ];
 
 pub const SELF_UPDATE_SPEC: CommandSpec = CommandSpec {

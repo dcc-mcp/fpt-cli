@@ -172,6 +172,25 @@ pub enum InspectCommands {
 #[derive(Debug, Subcommand)]
 pub enum AuthCommands {
     Test,
+    #[command(
+        name = "login",
+        about = "Create or replace a local credential profile in the system credential store"
+    )]
+    Login(AuthLoginArgs),
+    #[command(
+        name = "logout",
+        about = "Remove a local credential profile and its secure credentials"
+    )]
+    Logout,
+}
+
+#[derive(Debug, Args, Clone, Default)]
+pub struct AuthLoginArgs {
+    #[arg(
+        long,
+        help = "Open the Flow Production Tracking site before prompting for local credentials"
+    )]
+    pub open_browser: bool,
 }
 
 #[derive(Debug, Subcommand)]

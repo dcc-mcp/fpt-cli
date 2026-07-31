@@ -24,6 +24,8 @@ static COMMANDS: &[CommandSpec] = &[
     core::INSPECT_LIST_SPEC,
     // Auth
     auth::AUTH_TEST_SPEC,
+    auth::AUTH_LOGIN_SPEC,
+    auth::AUTH_LOGOUT_SPEC,
     // Server
     server::SERVER_INFO_SPEC,
     // Schema

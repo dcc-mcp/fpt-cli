@@ -69,6 +69,19 @@ fn inspect_auth_test_mentions_session_token_mode() {
 }
 
 #[test]
+fn inspect_auth_login_mentions_secure_profiles() {
+    let mut command = Command::cargo_bin("fpt").expect("fpt binary");
+    command.args(["inspect", "command", "auth.login", "--output", "json"]);
+    command
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("system_keyring"))
+        .stdout(predicate::str::contains(
+            "operating system credential store",
+        ));
+}
+
+#[test]
 fn inspect_entity_find_mentions_structured_search() {
     let mut command = Command::cargo_bin("fpt").expect("binary exists");
     command.args(["inspect", "command", "entity.find", "--output", "json"]);
