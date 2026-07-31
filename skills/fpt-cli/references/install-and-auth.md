@@ -21,8 +21,8 @@ Release asset names:
 export FPT_VERSION="v0.1.0"
 export FPT_INSTALL_DIR="${FPT_INSTALL_DIR:-$HOME/.local/bin}"
 export FPT_ARCHIVE="fpt-${FPT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-curl -fLO "https://github.com/loonghao/fpt-cli/releases/download/${FPT_VERSION}/${FPT_ARCHIVE}"
-curl -fLO "https://github.com/loonghao/fpt-cli/releases/download/${FPT_VERSION}/fpt-checksums.txt"
+curl -fLO "https://github.com/dcc-mcp/fpt-cli/releases/download/${FPT_VERSION}/${FPT_ARCHIVE}"
+curl -fLO "https://github.com/dcc-mcp/fpt-cli/releases/download/${FPT_VERSION}/fpt-checksums.txt"
 sha256sum -c --ignore-missing fpt-checksums.txt
 tar -xzf "${FPT_ARCHIVE}"
 mkdir -p "$FPT_INSTALL_DIR"
@@ -36,7 +36,7 @@ $FptVersion = "v0.1.0"
 $InstallDir = if ($env:FPT_INSTALL_DIR) { $env:FPT_INSTALL_DIR } else { Join-Path $env:USERPROFILE ".fpt\bin" }
 $Archive = "fpt-$FptVersion-x86_64-pc-windows-msvc.zip"
 $ExtractDir = Join-Path $env:TEMP "fpt-extract"
-Invoke-WebRequest -Uri "https://github.com/loonghao/fpt-cli/releases/download/$FptVersion/$Archive" -OutFile $Archive
+Invoke-WebRequest -Uri "https://github.com/dcc-mcp/fpt-cli/releases/download/$FptVersion/$Archive" -OutFile $Archive
 Expand-Archive -Path $Archive -DestinationPath $ExtractDir -Force
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path (Join-Path $ExtractDir "fpt.exe") -Destination (Join-Path $InstallDir "fpt.exe") -Force

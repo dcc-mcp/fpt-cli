@@ -61,12 +61,12 @@ vx just capabilities
 可通过 HTTPS 直接安装最新版本：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/loonghao/fpt-cli/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/dcc-mcp/fpt-cli/main/scripts/install.sh | sh
 
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/loonghao/fpt-cli/main/scripts/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/dcc-mcp/fpt-cli/main/scripts/install.ps1 | iex"
 
 ```
 

@@ -2,7 +2,7 @@
 param(
     [string]$Version = $env:FPT_INSTALL_VERSION,
     [string]$InstallDir = $(if ($env:FPT_INSTALL_DIR) { $env:FPT_INSTALL_DIR } else { Join-Path $env:USERPROFILE ".fpt\bin" }),
-    [string]$Repository = $(if ($env:FPT_INSTALL_REPOSITORY) { $env:FPT_INSTALL_REPOSITORY } else { "loonghao/fpt-cli" })
+    [string]$Repository = $(if ($env:FPT_INSTALL_REPOSITORY) { $env:FPT_INSTALL_REPOSITORY } else { "dcc-mcp/fpt-cli" })
 )
 
 Set-StrictMode -Version Latest
