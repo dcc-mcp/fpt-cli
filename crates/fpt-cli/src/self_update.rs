@@ -14,7 +14,7 @@ use tar::Archive;
 use tempfile::tempdir;
 use zip::ZipArchive;
 
-const DEFAULT_REPOSITORY: &str = "loonghao/fpt-cli";
+const DEFAULT_REPOSITORY: &str = "dcc-mcp/fpt-cli";
 /// Environment variable for overriding the GitHub repository used by `self-update`.
 const ENV_FPT_UPDATE_REPOSITORY: &str = "FPT_UPDATE_REPOSITORY";
 const CHECKSUM_ASSET_NAME: &str = "fpt-checksums.txt";
@@ -169,7 +169,7 @@ fn split_repository(repository: &str) -> Result<(String, String)> {
             .with_operation("split_repository")
             .with_invalid_field("repository")
             .with_received_value(repository)
-            .with_expected_shape("`owner/repo`, for example `loonghao/fpt-cli`")
+            .with_expected_shape("`owner/repo`, for example `dcc-mcp/fpt-cli`")
     };
 
     let (owner, repo) = repository.split_once('/').ok_or_else(bad_format)?;

@@ -61,11 +61,11 @@ Prebuilt release binaries are published for:
 Install the latest release over HTTPS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/loonghao/fpt-cli/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/dcc-mcp/fpt-cli/main/scripts/install.sh | sh
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/loonghao/fpt-cli/main/scripts/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/dcc-mcp/fpt-cli/main/scripts/install.ps1 | iex"
 ```
 
 Optional installer environment variables:

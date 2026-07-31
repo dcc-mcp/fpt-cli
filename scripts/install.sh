@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-REPOSITORY="${FPT_INSTALL_REPOSITORY:-loonghao/fpt-cli}"
+REPOSITORY="${FPT_INSTALL_REPOSITORY:-dcc-mcp/fpt-cli}"
 INSTALL_DIR="${FPT_INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${1:-${FPT_INSTALL_VERSION:-latest}}"
 
