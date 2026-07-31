@@ -39,10 +39,12 @@ regex-syntax = { version = "0.8" }
 syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 
 [target.x86_64-unknown-linux-gnu.dependencies]
+bitflags = { version = "2", default-features = false, features = ["std"] }
 hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "server-auto"] }
 linux-raw-sys = { version = "0.12", default-features = false, features = ["auxvec", "elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "system", "xdp"] }
 mio = { version = "1", features = ["net", "os-ext"] }
+num-traits = { version = "0.2", features = ["i128"] }
 rustix = { version = "1", features = ["event", "fs", "net", "stdio", "system", "termios"] }
 tracing = { version = "0.1", features = ["log"] }
 
