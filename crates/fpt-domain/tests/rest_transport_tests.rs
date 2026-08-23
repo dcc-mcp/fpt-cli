@@ -2035,3 +2035,97 @@ async fn thumbnail_upload_uses_expected_put_path() {
     assert_eq!(thumb_upload.calls(), 1);
     assert_eq!(response["upload_url"], "https://sg-media.com/upload/thumb");
 }
+
+// ---------------------------------------------------------------
+// REST API version endpoint (unauthenticated)
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn rest_api_version_uses_expected_get_path_no_auth() {
+    let server = MockServer::start();
+    let version_endpoint = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/")
+            .header("accept", "application/json");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "data": {
+                    "shotgun_version": "v8.40.0.0",
+                    "api_version": "v1.1"
+                }
+            }));
+    });
+    let transport = RestTransport::default();
+
+    let response = transport
+        .rest_api_version(&server.base_url(), "v1.1")
+        .await
+        .expect("rest_api_version succeeds");
+
+    assert_eq!(version_endpoint.calls(), 1);
+    assert_eq!(response["data"]["api_version"], "v1.1");
+    assert_eq!(response["data"]["shotgun_version"], "v8.40.0.0");
+}
+
+// ---------------------------------------------------------------
+// OpenAPI spec endpoint (unauthenticated) — JSON format
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn openapi_spec_json_uses_expected_get_path_no_auth() {
+    let server = MockServer::start();
+    let spec_endpoint = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/spec.json")
+            .header("accept", "application/json");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "openapi": "3.0.0",
+                "info": {"title": "ShotGrid REST API", "version": "1.1"}
+            }));
+    });
+    let transport = RestTransport::default();
+
+    let response = transport
+        .openapi_spec(&server.base_url(), "v1.1", "json")
+        .await
+        .expect("openapi_spec json succeeds");
+
+    assert_eq!(spec_endpoint.calls(), 1);
+    assert_eq!(response["openapi"], "3.0.0");
+    assert_eq!(response["info"]["title"], "ShotGrid REST API");
+}
+
+// ---------------------------------------------------------------
+// OpenAPI spec endpoint (unauthenticated) — YAML format
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn openapi_spec_yaml_wraps_response_in_json_envelope() {
+    let server = MockServer::start();
+    let spec_endpoint = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/spec.yaml")
+            .header("accept", "application/x-yaml");
+        then.status(200)
+            .header("content-type", "application/x-yaml")
+            .body("openapi: '3.0.0'\ninfo:\n  title: ShotGrid REST API\n  version: '1.1'\n");
+    });
+    let transport = RestTransport::default();
+
+    let response = transport
+        .openapi_spec(&server.base_url(), "v1.1", "yaml")
+        .await
+        .expect("openapi_spec yaml succeeds");
+
+    assert_eq!(spec_endpoint.calls(), 1);
+    assert_eq!(response["format"], "yaml");
+    assert!(
+        response["content"]
+            .as_str()
+            .unwrap()
+            .contains("openapi: '3.0.0'")
+    );
+}

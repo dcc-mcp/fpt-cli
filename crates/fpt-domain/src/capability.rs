@@ -28,6 +28,8 @@ static COMMANDS: &[CommandSpec] = &[
     auth::AUTH_LOGOUT_SPEC,
     // Server
     server::SERVER_INFO_SPEC,
+    server::SERVER_REST_VERSION_SPEC,
+    server::SERVER_OPENAPI_SPEC_SPEC,
     // Schema
     schema::SCHEMA_ENTITIES_SPEC,
     schema::SCHEMA_ENTITY_READ_SPEC,

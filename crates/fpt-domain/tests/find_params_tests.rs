@@ -350,6 +350,12 @@ impl ShotgridTransport for RecordingTransport {
     ) -> Result<Value> {
         Ok(json!({}))
     }
+    async fn rest_api_version(&self, _: &str, _: &str) -> Result<Value> {
+        Ok(json!({}))
+    }
+    async fn openapi_spec(&self, _: &str, _: &str, _: &str) -> Result<Value> {
+        Ok(json!({}))
+    }
 }
 
 fn test_overrides() -> ConnectionOverrides {
