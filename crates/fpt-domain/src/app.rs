@@ -133,7 +133,9 @@ fn batch_concurrency_limit() -> usize {
             .ok()
             .and_then(|value| value.parse::<usize>().ok())
             .filter(|value| *value > 0)
-            .map_or(DEFAULT_BATCH_CONCURRENCY, |value| value.min(MAX_BATCH_CONCURRENCY))
+            .map_or(DEFAULT_BATCH_CONCURRENCY, |value| {
+                value.min(MAX_BATCH_CONCURRENCY)
+            })
     })
 }
 

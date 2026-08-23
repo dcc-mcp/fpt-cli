@@ -1890,6 +1890,31 @@ async fn schedule_work_day_rules_update_uses_expected_put_path() {
     assert_eq!(response["ok"], true);
 }
 
+#[tokio::test]
+async fn schedule_work_day_rules_read_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let rule = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/schedule/work_day_rules/42")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": 42, "type": "WorkDayRule"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .schedule_work_day_rules_read(&config, 42)
+        .await
+        .expect("schedule_work_day_rules_read succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(rule.calls(), 1);
+    assert_eq!(response["data"]["id"], 42);
+}
+
 // ---------------------------------------------------------------
 // License
 // ---------------------------------------------------------------

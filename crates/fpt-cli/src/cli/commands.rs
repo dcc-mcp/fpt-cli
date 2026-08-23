@@ -808,6 +808,14 @@ pub enum ScheduleCommands {
         input: Option<String>,
     },
     #[command(
+        name = "work-day-rules-read",
+        about = "Read a single work day rule by record id"
+    )]
+    ReadOne {
+        #[arg(help = "Work day rule record id")]
+        rule_id: u64,
+    },
+    #[command(
         name = "work-day-rules-update",
         about = "Update a specific work day rule by record id"
     )]
