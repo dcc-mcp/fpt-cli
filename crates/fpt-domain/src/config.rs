@@ -15,6 +15,7 @@ pub enum AuthMode {
 }
 
 impl AuthMode {
+    #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Script => "script",
@@ -23,6 +24,7 @@ impl AuthMode {
         }
     }
 
+    #[must_use]
     pub const fn grant_type(self) -> &'static str {
         match self {
             Self::Script => "client_credentials",
@@ -141,10 +143,10 @@ impl Credentials {
         }
     }
 
-    pub fn principal(&self) -> Option<String> {
+    pub fn principal(&self) -> Option<&str> {
         match self {
-            Self::Script { script_name, .. } => Some(script_name.clone()),
-            Self::UserPassword { username, .. } => Some(username.clone()),
+            Self::Script { script_name, .. } => Some(script_name),
+            Self::UserPassword { username, .. } => Some(username),
             Self::SessionToken { .. } => None,
         }
     }
@@ -306,7 +308,7 @@ impl ConnectionSettings {
         ConnectionSummary {
             site: self.site.clone(),
             auth_mode: self.auth_mode(),
-            principal: self.credentials.principal(),
+            principal: self.credentials.principal().map(str::to_owned),
             profile: None,
             api_version: self.api_version.clone(),
         }
