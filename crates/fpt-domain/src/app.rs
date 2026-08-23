@@ -47,7 +47,7 @@ impl<T> App<T>
 where
     T: ShotgridTransport,
 {
-    pub fn new(transport: T) -> Self {
+    pub const fn new(transport: T) -> Self {
         Self { transport }
     }
 
@@ -133,8 +133,7 @@ fn batch_concurrency_limit() -> usize {
             .ok()
             .and_then(|value| value.parse::<usize>().ok())
             .filter(|value| *value > 0)
-            .map(|value| value.min(MAX_BATCH_CONCURRENCY))
-            .unwrap_or(DEFAULT_BATCH_CONCURRENCY)
+            .map_or(DEFAULT_BATCH_CONCURRENCY, |value| value.min(MAX_BATCH_CONCURRENCY))
     })
 }
 

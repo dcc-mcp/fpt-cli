@@ -349,8 +349,7 @@ fn parse_release_version(tag_name: &str) -> Result<Version> {
     let version = tag_name.strip_prefix('v').unwrap_or(tag_name);
     Version::parse(version).map_err(|error| {
         AppError::internal(format!(
-            "release tag `{}` is not a valid semantic version: {error}",
-            tag_name
+            "release tag `{tag_name}` is not a valid semantic version: {error}"
         ))
         .with_operation("parse_release_version")
     })
@@ -404,8 +403,7 @@ fn verify_checksum(checksums: &str, asset_name: &str, archive_bytes: &[u8]) -> R
         })
         .ok_or_else(|| {
             AppError::internal(format!(
-                "checksum file `{}` does not contain an entry for asset `{}`",
-                CHECKSUM_ASSET_NAME, asset_name
+                "checksum file `{CHECKSUM_ASSET_NAME}` does not contain an entry for asset `{asset_name}`"
             ))
             .with_operation("verify_checksum")
             .with_resource(CHECKSUM_ASSET_NAME)
@@ -415,8 +413,7 @@ fn verify_checksum(checksums: &str, asset_name: &str, archive_bytes: &[u8]) -> R
     let actual = format!("{:x}", Sha256::digest(archive_bytes));
     if actual != expected {
         return Err(AppError::network(format!(
-            "checksum verification failed for `{}`; expected `{}`, got `{}`",
-            asset_name, expected, actual
+            "checksum verification failed for `{asset_name}`; expected `{expected}`, got `{actual}`"
         ))
         .with_operation("verify_checksum")
         .with_resource(asset_name)
@@ -438,7 +435,7 @@ fn extract_binary(
     let destination = output_dir.join(target.binary_name);
     match target.archive_kind {
         ArchiveKind::TarGz => {
-            extract_tar_gz_binary(archive_path, target.binary_name, &destination)?
+            extract_tar_gz_binary(archive_path, target.binary_name, &destination)?;
         }
         ArchiveKind::Zip => extract_zip_binary(archive_path, target.binary_name, &destination)?,
     }
