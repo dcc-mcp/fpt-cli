@@ -4147,6 +4147,16 @@ async fn schedule_work_day_rules_delegates_to_transport() {
 }
 
 #[tokio::test]
+async fn schedule_work_day_rules_read_delegates_to_transport() {
+    let app = App::new(RecordingTransport::default());
+    let result = app
+        .schedule_work_day_rules_read(overrides(), 42)
+        .await
+        .expect("schedule_work_day_rules_read succeeds");
+    assert_eq!(result["id"], 42);
+}
+
+#[tokio::test]
 async fn schedule_work_day_rules_update_delegates_to_transport() {
     let app = App::new(RecordingTransport::default());
     let body = json!({"date": "2026-04-01", "is_working": false, "description": "Holiday"});

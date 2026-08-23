@@ -426,6 +426,10 @@ pub async fn run(cli: Cli) -> Result<Value> {
                 let input = read_json_input(input.as_deref())?;
                 app.schedule_work_day_rules(connection, input).await
             }
+            ScheduleCommands::ReadOne { rule_id } => {
+                app.schedule_work_day_rules_read(connection, rule_id)
+                    .await
+            }
             ScheduleCommands::Update { rule_id, input } => {
                 let body = required_json_input(input)?;
                 app.schedule_work_day_rules_update(connection, rule_id, body)
