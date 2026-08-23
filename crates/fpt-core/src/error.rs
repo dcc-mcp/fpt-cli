@@ -87,7 +87,7 @@ impl AppError {
     pub fn new(code: ErrorCode, message: impl Into<String>) -> Self {
         Self {
             code,
-            message: format_error_message(code, message.into()),
+            message: format_error_message(code, &message.into()),
             details: None,
             retryable: false,
             transport: None,
@@ -264,7 +264,7 @@ impl AppError {
     }
 }
 
-fn format_error_message(code: ErrorCode, message: String) -> String {
+fn format_error_message(code: ErrorCode, message: &str) -> String {
     let prefix = match code {
         ErrorCode::InvalidInput => "Input validation failed",
         ErrorCode::AuthFailed => "Authentication failed",

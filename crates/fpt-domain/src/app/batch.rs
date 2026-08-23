@@ -407,8 +407,7 @@ where
                                         .get("id")
                                         .and_then(Value::as_u64);
                                     let id_display = existing_id
-                                        .map(|id| id.to_string())
-                                        .unwrap_or_else(|| "unknown".to_string());
+                                        .map_or_else(|| "unknown".to_string(), |id| id.to_string());
                                     let error = AppError::policy_blocked(format!(
                                         "entity with {key}={} already exists (id={id_display}); use --on-conflict skip or update to handle conflicts",
                                         body.get(&key).unwrap_or(&Value::Null)

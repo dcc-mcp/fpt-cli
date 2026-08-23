@@ -852,9 +852,9 @@ pub enum OnConflictArg {
 impl From<OnConflictArg> for OnConflict {
     fn from(value: OnConflictArg) -> Self {
         match value {
-            OnConflictArg::Skip => OnConflict::Skip,
-            OnConflictArg::Update => OnConflict::Update,
-            OnConflictArg::Error => OnConflict::Error,
+            OnConflictArg::Skip => Self::Skip,
+            OnConflictArg::Update => Self::Update,
+            OnConflictArg::Error => Self::Error,
         }
     }
 }

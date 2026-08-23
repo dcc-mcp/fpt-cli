@@ -8,7 +8,7 @@ enum LogicalOp {
 }
 
 impl LogicalOp {
-    fn as_str(&self) -> &'static str {
+    const fn as_str(&self) -> &'static str {
         match self {
             Self::And => "and",
             Self::Or => "or",
@@ -25,7 +25,7 @@ enum Expr {
     },
     Logical {
         op: LogicalOp,
-        conditions: Vec<Expr>,
+        conditions: Vec<Self>,
     },
 }
 
@@ -517,10 +517,10 @@ impl Parser {
     }
 }
 
-fn is_identifier_start(ch: char) -> bool {
+const fn is_identifier_start(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphabetic()
 }
 
-fn is_identifier_continue(ch: char) -> bool {
+const fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
 }

@@ -300,7 +300,7 @@ impl ConnectionSettings {
         })
     }
 
-    pub fn auth_mode(&self) -> AuthMode {
+    pub const fn auth_mode(&self) -> AuthMode {
         self.credentials.auth_mode()
     }
 

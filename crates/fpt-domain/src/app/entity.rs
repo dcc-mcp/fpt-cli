@@ -342,12 +342,11 @@ fn build_count_payload(input: Option<Value>, filter_dsl: Option<String>) -> Resu
             let operator = parsed
                 .get("logical_operator")
                 .and_then(Value::as_str)
-                .map(|op| match op {
+                .map_or("all", |op| match op {
                     "and" => "all",
                     "or" => "any",
                     other => other,
-                })
-                .unwrap_or("all");
+                });
             let conditions = parsed.get("conditions").cloned().unwrap_or(json!([]));
             json!({
                 "filter_operator": operator,

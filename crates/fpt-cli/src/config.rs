@@ -321,7 +321,7 @@ fn config_diagnostics(config: &PersistedConnectionConfig) -> Value {
     })
 }
 
-fn has_any_set_arg(args: &ConfigSetArgs) -> bool {
+const fn has_any_set_arg(args: &ConfigSetArgs) -> bool {
     args.site.is_some()
         || args.auth_mode.is_some()
         || args.script_name.is_some()

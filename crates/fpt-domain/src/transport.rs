@@ -496,7 +496,7 @@ impl RestTransport {
                     "user_password": password,
                 });
                 if let Some(auth_token) = auth_token {
-                    payload["auth_token"] = Value::String(auth_token.to_string());
+                    payload["auth_token"] = Value::String(auth_token.clone());
                 }
                 payload
             }
@@ -614,7 +614,7 @@ impl RestTransport {
                 form.push(("grant_type", "session_token"));
                 form.push(("session_token", session_token));
             }
-        };
+        }
 
         if debug {
             let masked_form: Vec<String> = form
