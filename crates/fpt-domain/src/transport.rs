@@ -1684,7 +1684,7 @@ impl ShotgridTransport for RestTransport {
                 ))
                 .with_operation("openapi_spec")
                 .with_transport(TRANSPORT_REST)
-                .with_resource(&format!("spec.{format}"))
+                .with_resource(format!("spec.{format}"))
                 .retryable(true)
             })?;
 
