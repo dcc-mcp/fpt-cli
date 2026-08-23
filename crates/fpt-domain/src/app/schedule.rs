@@ -23,6 +23,17 @@ where
             .await
     }
 
+    pub async fn schedule_work_day_rules_read(
+        &self,
+        overrides: ConnectionOverrides,
+        rule_id: u64,
+    ) -> Result<Value> {
+        let config = ConnectionSettings::resolve(overrides)?;
+        self.transport
+            .schedule_work_day_rules_read(&config, rule_id)
+            .await
+    }
+
     pub async fn schedule_work_day_rules_update(
         &self,
         overrides: ConnectionOverrides,

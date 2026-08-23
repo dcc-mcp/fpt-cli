@@ -89,6 +89,7 @@ static COMMANDS: &[CommandSpec] = &[
     hierarchy::HIERARCHY_EXPAND_SPEC,
     // Schedule
     schedule::SCHEDULE_WORK_DAY_RULES_SPEC,
+    schedule::SCHEDULE_WORK_DAY_RULES_READ_SPEC,
     schedule::SCHEDULE_WORK_DAY_RULES_UPDATE_SPEC,
     schedule::SCHEDULE_WORK_DAY_RULES_CREATE_SPEC,
     schedule::SCHEDULE_WORK_DAY_RULES_DELETE_SPEC,
