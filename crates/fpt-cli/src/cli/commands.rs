@@ -196,6 +196,23 @@ pub struct AuthLoginArgs {
 #[derive(Debug, Subcommand)]
 pub enum ServerCommands {
     Info,
+    #[command(
+        name = "version",
+        about = "Fetch REST API version and server metadata (no authentication required)"
+    )]
+    Version,
+    #[command(
+        name = "openapi-spec",
+        about = "Download the OpenAPI v3 specification for the ShotGrid REST API (no authentication required)"
+    )]
+    OpenapiSpec {
+        #[arg(
+            long,
+            default_value = "json",
+            help = "Specification format: json or yaml"
+        )]
+        format: String,
+    },
 }
 
 #[derive(Debug, Subcommand)]

@@ -393,6 +393,16 @@ pub trait ShotgridTransport {
         config: &ConnectionSettings,
         body: &Value,
     ) -> Result<Value>;
+    /// Fetch the REST API version information from the base endpoint.
+    ///
+    /// This is an unauthenticated endpoint (`GET /api/{version}/`) that returns
+    /// the server and REST API version metadata.
+    async fn rest_api_version(&self, site: &str, api_version: &str) -> Result<Value>;
+    /// Download the OpenAPI specification for the ShotGrid REST API.
+    ///
+    /// This is an unauthenticated endpoint (`GET /api/{version}/spec.{format}`)
+    /// that returns the OpenAPI v3 spec in the requested format (json or yaml).
+    async fn openapi_spec(&self, site: &str, api_version: &str, format: &str) -> Result<Value>;
 }
 
 #[derive(Debug, Clone)]
@@ -1616,6 +1626,90 @@ impl ShotgridTransport for RestTransport {
             Some(body),
         )
         .await
+    }
+
+    async fn rest_api_version(&self, site: &str, api_version: &str) -> Result<Value> {
+        let normalized_site = site.trim_end_matches('/');
+        let url_str = format!("{normalized_site}/api/{api_version}/");
+        let url = Url::parse(&url_str).map_err(|error| {
+            AppError::invalid_input(format!("invalid ShotGrid site URL: {error}"))
+                .with_operation("rest_api_version")
+                .with_invalid_field("site")
+                .with_received_value(site)
+        })?;
+
+        let response = self
+            .client
+            .request(Method::GET, url)
+            .header(ACCEPT, "application/json")
+            .send()
+            .await
+            .map_err(|error| {
+                AppError::network(format!(
+                    "could not fetch the REST API version endpoint: {error}"
+                ))
+                .with_operation("rest_api_version")
+                .with_transport(TRANSPORT_REST)
+                .with_resource("/")
+                .retryable(true)
+            })?;
+
+        Self::parse_response(response, TRANSPORT_REST).await
+    }
+
+    async fn openapi_spec(&self, site: &str, api_version: &str, format: &str) -> Result<Value> {
+        let normalized_site = site.trim_end_matches('/');
+        let url_str = format!("{normalized_site}/api/{api_version}/spec.{format}");
+        let url = Url::parse(&url_str).map_err(|error| {
+            AppError::invalid_input(format!("invalid ShotGrid site URL: {error}"))
+                .with_operation("openapi_spec")
+                .with_invalid_field("site")
+                .with_received_value(site)
+        })?;
+
+        let accept = match format {
+            "yaml" | "yml" => "application/x-yaml",
+            _ => "application/json",
+        };
+
+        let response = self
+            .client
+            .request(Method::GET, url)
+            .header(ACCEPT, accept)
+            .send()
+            .await
+            .map_err(|error| {
+                AppError::network(format!(
+                    "could not fetch the OpenAPI specification: {error}"
+                ))
+                .with_operation("openapi_spec")
+                .with_transport(TRANSPORT_REST)
+                .with_resource(&format!("spec.{format}"))
+                .retryable(true)
+            })?;
+
+        // For YAML responses we wrap the text in a JSON envelope since the
+        // CLI output layer expects `Value`.
+        if format == "yaml" || format == "yml" {
+            let status = response.status();
+            let text = response.text().await.map_err(|error| {
+                AppError::network(format!("could not read OpenAPI spec response: {error}"))
+                    .with_operation("openapi_spec")
+            })?;
+            if !status.is_success() {
+                return Err(
+                    AppError::api(format!("ShotGrid returned HTTP {status} for OpenAPI spec"))
+                        .with_operation("openapi_spec")
+                        .with_http_status(status.as_u16()),
+                );
+            }
+            return Ok(json!({
+                "format": format,
+                "content": text,
+            }));
+        }
+
+        Self::parse_response(response, TRANSPORT_REST).await
     }
 }
 

@@ -632,6 +632,14 @@ impl ShotgridTransport for RecordingTransport {
     ) -> Result<Value> {
         Ok(json!({"entity": entity, "id": id, "uploaded": true, "body": body}))
     }
+
+    async fn rest_api_version(&self, _site: &str, _api_version: &str) -> Result<Value> {
+        Ok(json!({"version": "v1.1"}))
+    }
+
+    async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
+        Ok(json!({"format": _format}))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1127,6 +1135,12 @@ impl ShotgridTransport for FindOneTransport {
     ) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
     }
+    async fn rest_api_version(&self, _site: &str, _api_version: &str) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+    async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1612,6 +1626,12 @@ impl ShotgridTransport for NoteThreadsNotFoundTransport {
         _id: u64,
         _body: &Value,
     ) -> Result<Value> {
+        Ok(json!({}))
+    }
+    async fn rest_api_version(&self, _site: &str, _api_version: &str) -> Result<Value> {
+        Ok(json!({}))
+    }
+    async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
         Ok(json!({}))
     }
 }
@@ -2111,6 +2131,12 @@ impl ShotgridTransport for SlowGetTransport {
         _id: u64,
         _body: &Value,
     ) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+    async fn rest_api_version(&self, _site: &str, _api_version: &str) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+    async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
     }
 }
