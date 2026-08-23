@@ -23,9 +23,8 @@ pub const SERVER_INFO_SPEC: CommandSpec = CommandSpec {
     notes: SERVER_INFO_NOTES,
 };
 
-const REST_VERSION_EXAMPLES: &[&str] = &[
-    "fpt server version --site https://example.shotgrid.autodesk.com --output json",
-];
+const REST_VERSION_EXAMPLES: &[&str] =
+    &["fpt server version --site https://example.shotgrid.autodesk.com --output json"];
 
 const REST_VERSION_NOTES: &[&str] = &[
     "Calls `GET /api/{version}/` on the ShotGrid REST API",

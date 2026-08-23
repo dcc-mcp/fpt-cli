@@ -1697,11 +1697,11 @@ impl ShotgridTransport for RestTransport {
                     .with_operation("openapi_spec")
             })?;
             if !status.is_success() {
-                return Err(
-                    AppError::api(format!("ShotGrid returned HTTP {status} for OpenAPI spec"))
-                        .with_operation("openapi_spec")
-                        .with_http_status(status.as_u16()),
-                );
+                return Err(AppError::api(format!(
+                    "ShotGrid returned HTTP {status} for OpenAPI spec"
+                ))
+                .with_operation("openapi_spec")
+                .with_http_status(status.as_u16()));
             }
             return Ok(json!({
                 "format": format,

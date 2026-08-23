@@ -2044,7 +2044,9 @@ async fn thumbnail_upload_uses_expected_put_path() {
 async fn rest_api_version_uses_expected_get_path_no_auth() {
     let server = MockServer::start();
     let version_endpoint = server.mock(|when, then| {
-        when.method(GET).path("/api/v1.1/").header("accept", "application/json");
+        when.method(GET)
+            .path("/api/v1.1/")
+            .header("accept", "application/json");
         then.status(200)
             .header("content-type", "application/json")
             .json_body(json!({
@@ -2120,5 +2122,10 @@ async fn openapi_spec_yaml_wraps_response_in_json_envelope() {
 
     assert_eq!(spec_endpoint.calls(), 1);
     assert_eq!(response["format"], "yaml");
-    assert!(response["content"].as_str().unwrap().contains("openapi: '3.0.0'"));
+    assert!(
+        response["content"]
+            .as_str()
+            .unwrap()
+            .contains("openapi: '3.0.0'")
+    );
 }

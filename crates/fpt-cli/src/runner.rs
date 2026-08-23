@@ -30,9 +30,7 @@ pub async fn run(cli: Cli) -> Result<Value> {
         Commands::Server(command) => match command {
             ServerCommands::Info => app.server_info(connection).await,
             ServerCommands::Version => app.rest_api_version(connection).await,
-            ServerCommands::OpenapiSpec { format } => {
-                app.openapi_spec(connection, &format).await
-            }
+            ServerCommands::OpenapiSpec { format } => app.openapi_spec(connection, &format).await,
         },
         Commands::Schema(command) => match command {
             SchemaCommands::Entities => app.schema_entities(connection).await,

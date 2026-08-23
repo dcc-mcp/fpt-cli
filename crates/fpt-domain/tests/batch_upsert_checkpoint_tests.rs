@@ -609,12 +609,7 @@ impl ShotgridTransport for UpsertTransport {
         Err(AppError::not_implemented("unused"))
     }
 
-    async fn openapi_spec(
-        &self,
-        _site: &str,
-        _api_version: &str,
-        _format: &str,
-    ) -> Result<Value> {
+    async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
     }
 }
