@@ -575,9 +575,10 @@ where
     ) -> Result<Value> {
         let ids = parse_batch_id_list_input(input)?;
         if dry_run {
+            let api_version = api_version_or_default(overrides.api_version.as_deref());
             let plans = ids
                 .iter()
-                .map(|&id| plan_entity_revive(entity, id))
+                .map(|&id| plan_entity_revive(&api_version, entity, id))
                 .collect::<Vec<_>>();
             return Ok(batch_dry_run_response("entity.batch.revive", entity, plans));
         }

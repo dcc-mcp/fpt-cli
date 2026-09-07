@@ -54,7 +54,7 @@ const ENTITY_NOTES: &[&str] = &[
     "entity find also accepts a structured `search` object and `additional_filter_presets` for native `_search` payloads",
     "entity summarize uses the ShotGrid RPC `summarize` method and expects explicit `filters` + `summary_fields` input",
     "delete is blocked by default and requires explicit `--yes`",
-    "revive uses the ShotGrid RPC `revive` method and supports `--dry-run`",
+    "revive uses the ShotGrid REST `POST ?revive=true` endpoint and supports `--dry-run`",
     "All entity commands reuse the same auth configuration",
 ];
 
@@ -170,10 +170,10 @@ pub const ENTITY_REVIVE_SPEC: CommandSpec = CommandSpec {
     risk: RiskLevel::Write,
     implemented: true,
     supports_dry_run: true,
-    preferred_transport: "rpc",
+    preferred_transport: "rest",
     fallback_transport: None,
     input: "entity + id",
-    output: "json bool",
+    output: "json",
     examples: ENTITY_REVIVE_EXAMPLES,
     notes: ENTITY_NOTES,
 };
@@ -284,7 +284,7 @@ pub const ENTITY_BATCH_REVIVE_SPEC: CommandSpec = CommandSpec {
     risk: RiskLevel::Write,
     implemented: true,
     supports_dry_run: true,
-    preferred_transport: "rpc",
+    preferred_transport: "rest",
     fallback_transport: None,
     input: "ids array / object with ids",
     output: "json",
