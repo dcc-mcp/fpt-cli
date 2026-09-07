@@ -545,3 +545,56 @@ pub const ENTITY_BATCH_COUNT_SPEC: CommandSpec = CommandSpec {
     examples: ENTITY_BATCH_COUNT_EXAMPLES,
     notes: ENTITY_BATCH_COUNT_NOTES,
 };
+
+const ENTITY_SUMMARIZE_REST_EXAMPLES: &[&str] = &[
+    "fpt entity summarize-rest Shot --input '{\"summary_fields\":[{\"field\":\"id\",\"type\":\"count\"}],\"filters\":[[\"sg_status_list\",\"is\",\"ip\"]]}' --output json",
+    "fpt entity summarize-rest Task --input @summarize_rest.json --site ... --auth-mode script --script-name ... --script-key ...",
+];
+
+const ENTITY_SUMMARIZE_REST_NOTES: &[&str] = &[
+    "Uses the REST _summarize endpoint: POST /api/{ver}/entity/{entity}/_summarize",
+    "This is the REST-native alternative to the legacy RPC summarize method",
+    "The request body is forwarded directly; the server validates the payload structure",
+    "Input must be a JSON object with summary_fields, filters, and optional grouping",
+];
+
+pub const ENTITY_SUMMARIZE_REST_SPEC: CommandSpec = CommandSpec {
+    name: "entity.summarize-rest",
+    summary: "Summarize entity records using the REST _summarize endpoint",
+    risk: RiskLevel::Read,
+    implemented: true,
+    supports_dry_run: false,
+    preferred_transport: "rest",
+    fallback_transport: None,
+    input: "JSON object with summary_fields, filters, and optional grouping",
+    output: "json summary payload",
+    examples: ENTITY_SUMMARIZE_REST_EXAMPLES,
+    notes: ENTITY_SUMMARIZE_REST_NOTES,
+};
+
+const ENTITY_BATCH_SERVER_EXAMPLES: &[&str] = &[
+    "fpt entity batch-server --input '{\"requests\":[{\"request_type\":\"create\",\"entity\":\"Shot\",\"data\":{\"code\":\"shot_010\",\"project\":{\"type\":\"Project\",\"id\":1}}}]}' --output json",
+    "fpt entity batch-server --input @batch_ops.json --site ... --auth-mode script --script-name ... --script-key ...",
+];
+
+const ENTITY_BATCH_SERVER_NOTES: &[&str] = &[
+    "Executes a server-side transactional batch via POST /api/{ver}/entity/_batch",
+    "All operations in the batch are executed atomically: all succeed or all roll back",
+    "Unlike client-side batch commands, this uses the official ShotGrid server-side batch endpoint",
+    "Input must be a JSON object containing `requests` (array of operation descriptors)",
+    "Each request descriptor requires `request_type` (create/update/delete), `entity`, and request-specific fields",
+];
+
+pub const ENTITY_BATCH_SERVER_SPEC: CommandSpec = CommandSpec {
+    name: "entity.batch-server",
+    summary: "Execute a server-side transactional batch of entity operations",
+    risk: RiskLevel::Write,
+    implemented: true,
+    supports_dry_run: false,
+    preferred_transport: "rest",
+    fallback_transport: None,
+    input: "JSON object with requests array of operation descriptors",
+    output: "json",
+    examples: ENTITY_BATCH_SERVER_EXAMPLES,
+    notes: ENTITY_BATCH_SERVER_NOTES,
+};

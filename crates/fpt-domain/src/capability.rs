@@ -71,6 +71,8 @@ static COMMANDS: &[CommandSpec] = &[
     entity::ENTITY_BATCH_UPSERT_SPEC,
     entity::ENTITY_BATCH_SUMMARIZE_SPEC,
     entity::ENTITY_BATCH_COUNT_SPEC,
+    entity::ENTITY_SUMMARIZE_REST_SPEC,
+    entity::ENTITY_BATCH_SERVER_SPEC,
     // Follow
     follow::ENTITY_FOLLOWERS_SPEC,
     follow::ENTITY_FOLLOW_SPEC,

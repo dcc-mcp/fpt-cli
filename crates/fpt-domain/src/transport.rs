@@ -413,6 +413,26 @@ pub trait ShotgridTransport {
     /// This is an unauthenticated endpoint (`GET /api/{version}/spec.{format}`)
     /// that returns the OpenAPI v3 spec in the requested format (json or yaml).
     async fn openapi_spec(&self, site: &str, api_version: &str, format: &str) -> Result<Value>;
+
+    /// Summarize entity records using the REST `_summarize` endpoint.
+    ///
+    /// This is the REST-native counterpart to the legacy RPC `summarize` method.
+    /// It supports summary_fields, filters, grouping, and
+    /// additional_filter_presets via `POST /api/{ver}/entity/{entity}/_summarize`.
+    async fn entity_summarize_rest(
+        &self,
+        config: &ConnectionSettings,
+        entity: &str,
+        body: &Value,
+    ) -> Result<Value>;
+
+    /// Execute multiple create/update/delete operations in a single server-side
+    /// transaction via `POST /api/{ver}/entity/_batch`.
+    ///
+    /// Each request in the batch array describes one operation.  All operations
+    /// succeed or fail together — the server rolls back if any request fails.
+    async fn entity_batch_server(&self, config: &ConnectionSettings, body: &Value)
+    -> Result<Value>;
 }
 
 #[derive(Debug, Clone)]
@@ -1716,6 +1736,26 @@ impl ShotgridTransport for RestTransport {
         }
 
         Self::parse_response(response, TRANSPORT_REST).await
+    }
+
+    async fn entity_summarize_rest(
+        &self,
+        config: &ConnectionSettings,
+        entity: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        let path = format!("entity/{}/_summarize", entity_collection_path(entity));
+        self.authorized_json_request(config, Method::POST, &path, &[], Some(body))
+            .await
+    }
+
+    async fn entity_batch_server(
+        &self,
+        config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value> {
+        self.authorized_json_request(config, Method::POST, "entity/_batch", &[], Some(body))
+            .await
     }
 }
 
