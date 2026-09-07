@@ -429,7 +429,7 @@ pub(crate) fn validate_entity_type(entity: &str) -> Result<()> {
         .with_hint("Provide the plain entity type name without query parameters, for example `Shot` not `Shot?fields=code`."));
     }
 
-    if entity.chars().any(|c| (c as u32) < 0x20) {
+    if entity.chars().any(|c| c.is_ascii_control()) {
         return Err(AppError::invalid_input(format!(
             "entity type name `{entity}` contains control characters (below ASCII 0x20), which are not permitted"
         ))

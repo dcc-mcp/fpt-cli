@@ -4,16 +4,28 @@ use std::fmt::{Display, Formatter};
 
 pub type Result<T> = std::result::Result<T, AppError>;
 
+/// Categorized error codes for structured CLI error output.
+///
+/// Each variant maps to a stable `SCREAMING_SNAKE_CASE` string and a distinct
+/// process exit code (spaced by 10 for future extensibility).
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ErrorCode {
+    /// Caller-provided input failed validation (bad JSON, missing fields, etc.).
     InvalidInput,
+    /// Authentication or authorization against ShotGrid failed.
     AuthFailed,
+    /// A network-level error occurred (DNS, TLS, timeout, connection refused).
     NetworkError,
+    /// The remote ShotGrid API returned a non-success HTTP status.
     ApiError,
+    /// A safety policy (e.g. missing `--yes` on destructive ops) blocked execution.
     PolicyBlocked,
+    /// The requested capability exists but is not available for this transport.
     UnsupportedCapability,
+    /// The requested capability is recognized but not yet implemented.
     NotImplemented,
+    /// An unexpected internal error (bug, serialization failure, etc.).
     InternalError,
 }
 
