@@ -4,10 +4,7 @@ use std::fs;
 use std::io::Read;
 
 pub fn read_json_input(input: Option<&str>) -> Result<Option<Value>> {
-    match input {
-        None => Ok(None),
-        Some(source) => read_from_source(source).map(Some),
-    }
+    input.map_or_else(|| Ok(None), |source| read_from_source(source).map(Some))
 }
 
 fn read_from_source(source: &str) -> Result<Value> {

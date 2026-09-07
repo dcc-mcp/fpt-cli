@@ -320,7 +320,7 @@ fn normalize_search_filters(value: Value, field_name: &str) -> Result<Value> {
     }
 }
 
-/// Well-known ShotGrid entity-link field name patterns.
+/// Well-known `ShotGrid` entity-link field name patterns.
 ///
 /// Fields with these names or prefixes typically expect entity-link objects
 /// rather than bare scalar ids.
@@ -441,7 +441,7 @@ fn validate_entity_link_condition(items: &[Value]) -> Result<()> {
     Ok(())
 }
 
-/// Attempt to infer the ShotGrid entity type from a field name.
+/// Attempt to infer the `ShotGrid` entity type from a field name.
 ///
 /// This is best-effort and covers common conventions:
 /// - `project` → `Project`

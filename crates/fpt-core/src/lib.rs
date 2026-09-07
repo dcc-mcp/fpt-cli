@@ -5,7 +5,7 @@
 //! command specification schema ([`CommandSpec`]), and JSON I/O helpers
 //! used by both `fpt-domain` and `fpt-cli`.
 //!
-//! It intentionally has zero ShotGrid-specific logic so that any downstream
+//! It intentionally has zero `ShotGrid`-specific logic so that any downstream
 //! crate can depend on it without pulling in transport or domain concerns.
 
 #![allow(clippy::result_large_err)]

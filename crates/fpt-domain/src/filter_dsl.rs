@@ -249,7 +249,7 @@ impl Parser {
 
     /// Parse a JSON object literal `{...}` for use as an entity-link value.
     ///
-    /// Supports the ShotGrid entity-link shorthand:
+    /// Supports the `ShotGrid` entity-link shorthand:
     ///   `project is {"type": "Project", "id": 123}`
     fn parse_object(&mut self) -> Result<Value> {
         self.expect_char('{', "opening `{` of object")?;
@@ -264,7 +264,7 @@ impl Parser {
             self.skip_whitespace();
             // key must be a quoted string
             let key = match self.peek_char() {
-                Some('"') | Some('\'') => self.parse_string()?,
+                Some('"' | '\'') => self.parse_string()?,
                 _ => {
                     return self.error(
                         "JSON object keys must be quoted strings, e.g. {\"type\": \"Project\", \"id\": 123}",

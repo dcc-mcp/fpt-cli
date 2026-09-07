@@ -410,7 +410,7 @@ fn validate_share_body(body: &Value) -> Result<()> {
 /// the URL builder in `RestTransport` never silently builds a malformed request.
 ///
 /// Control characters (anything below ASCII 0x20) are also rejected because
-/// they cannot appear in a valid ShotGrid entity type name and may indicate
+/// they cannot appear in a valid `ShotGrid` entity type name and may indicate
 /// a prompt-injection attempt.
 pub(crate) fn validate_entity_type(entity: &str) -> Result<()> {
     if entity.is_empty() {

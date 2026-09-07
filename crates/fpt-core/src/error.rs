@@ -13,11 +13,11 @@ pub type Result<T> = std::result::Result<T, AppError>;
 pub enum ErrorCode {
     /// Caller-provided input failed validation (bad JSON, missing fields, etc.).
     InvalidInput,
-    /// Authentication or authorization against ShotGrid failed.
+    /// Authentication or authorization against `ShotGrid` failed.
     AuthFailed,
     /// A network-level error occurred (DNS, TLS, timeout, connection refused).
     NetworkError,
-    /// The remote ShotGrid API returned a non-success HTTP status.
+    /// The remote `ShotGrid` API returned a non-success HTTP status.
     ApiError,
     /// A safety policy (e.g. missing `--yes` on destructive ops) blocked execution.
     PolicyBlocked,
