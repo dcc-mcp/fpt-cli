@@ -2154,3 +2154,102 @@ async fn openapi_spec_yaml_wraps_response_in_json_envelope() {
             .contains("openapi: '3.0.0'")
     );
 }
+
+// ---------------------------------------------------------------
+// REST summarize endpoint (_summarize)
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn entity_summarize_rest_uses_expected_post_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let summarize = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/entity/shots/_summarize")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({
+                "summary_fields": [{"field": "id", "type": "count"}],
+                "filters": [["sg_status_list", "is", "ip"]]
+            }));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "data": {
+                    "summaries": {"id": 42},
+                    "groups": []
+                }
+            }));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .entity_summarize_rest(
+            &config,
+            "Shot",
+            &json!({
+                "summary_fields": [{"field": "id", "type": "count"}],
+                "filters": [["sg_status_list", "is", "ip"]]
+            }),
+        )
+        .await
+        .expect("entity_summarize_rest succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(summarize.calls(), 1);
+    assert_eq!(response["data"]["summaries"]["id"], 42);
+}
+
+// ---------------------------------------------------------------
+// Server-side batch endpoint (_batch)
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn entity_batch_server_uses_expected_post_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let batch = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/entity/_batch")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({
+                "requests": [
+                    {
+                        "request_type": "create",
+                        "entity": "Shot",
+                        "data": {"code": "shot_010", "project": {"type": "Project", "id": 1}}
+                    }
+                ]
+            }));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "data": [
+                    {"id": 999, "type": "Shot", "attributes": {"code": "shot_010"}}
+                ]
+            }));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .entity_batch_server(
+            &config,
+            &json!({
+                "requests": [
+                    {
+                        "request_type": "create",
+                        "entity": "Shot",
+                        "data": {"code": "shot_010", "project": {"type": "Project", "id": 1}}
+                    }
+                ]
+            }),
+        )
+        .await
+        .expect("entity_batch_server succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(batch.calls(), 1);
+    assert_eq!(response["data"][0]["type"], "Shot");
+    assert_eq!(response["data"][0]["id"], 999);
+}

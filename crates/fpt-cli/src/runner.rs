@@ -198,6 +198,10 @@ pub async fn run(cli: Cli) -> Result<Value> {
                 app.entity_count(connection, &entity, input, filter_dsl)
                     .await
             }
+            EntityCommands::SummarizeRest { entity, input } => {
+                let body = required_json_input(input)?;
+                app.entity_summarize_rest(connection, &entity, body).await
+            }
             EntityCommands::Batch(command) => match command {
                 BatchEntityCommands::Get { entity, input } => {
                     let body = required_json_input(input)?;
@@ -277,6 +281,10 @@ pub async fn run(cli: Cli) -> Result<Value> {
                 BatchEntityCommands::Count { input } => {
                     let body = required_json_input(input)?;
                     app.entity_batch_count(connection, body).await
+                }
+                BatchEntityCommands::Server { input } => {
+                    let body = required_json_input(input)?;
+                    app.entity_batch_server(connection, body).await
                 }
             },
         },

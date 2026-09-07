@@ -640,6 +640,23 @@ impl ShotgridTransport for RecordingTransport {
     async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
         Ok(json!({"format": _format}))
     }
+
+    async fn entity_summarize_rest(
+        &self,
+        _config: &ConnectionSettings,
+        _entity: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Ok(json!({}))
+    }
+
+    async fn entity_batch_server(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Ok(json!({}))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1141,6 +1158,23 @@ impl ShotgridTransport for FindOneTransport {
     async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
     }
+
+    async fn entity_summarize_rest(
+        &self,
+        _config: &ConnectionSettings,
+        _entity: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+
+    async fn entity_batch_server(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1632,6 +1666,23 @@ impl ShotgridTransport for NoteThreadsNotFoundTransport {
         Ok(json!({}))
     }
     async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
+        Ok(json!({}))
+    }
+
+    async fn entity_summarize_rest(
+        &self,
+        _config: &ConnectionSettings,
+        _entity: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Ok(json!({}))
+    }
+
+    async fn entity_batch_server(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
         Ok(json!({}))
     }
 }
@@ -2137,6 +2188,23 @@ impl ShotgridTransport for SlowGetTransport {
         Err(AppError::not_implemented("unused"))
     }
     async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+
+    async fn entity_summarize_rest(
+        &self,
+        _config: &ConnectionSettings,
+        _entity: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+
+    async fn entity_batch_server(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
     }
 }

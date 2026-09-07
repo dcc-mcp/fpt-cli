@@ -23,6 +23,24 @@ where
             .entity_summarize(&config, entity, &payload)
             .await
     }
+
+    /// Summarize entity records using the REST `_summarize` endpoint.
+    ///
+    /// This is the REST-native alternative to the legacy RPC `summarize` method.
+    /// The request body is forwarded directly to the
+    /// `POST /api/{ver}/entity/{entity}/_summarize` endpoint.
+    pub async fn entity_summarize_rest(
+        &self,
+        overrides: ConnectionOverrides,
+        entity: &str,
+        input: Value,
+    ) -> Result<Value> {
+        let config = ConnectionSettings::resolve(overrides)?;
+        let body = validate_summarize_rest_input(input)?;
+        self.transport
+            .entity_summarize_rest(&config, entity, &body)
+            .await
+    }
 }
 
 fn normalize_summarize_input(input: Value) -> Result<Value> {
@@ -194,4 +212,23 @@ fn normalize_named_object(
     }
 
     Ok(Value::Object(normalized))
+}
+
+/// Validate the input for the REST `_summarize` endpoint.
+///
+/// The body must be a JSON object; beyond that, the server validates the
+/// payload structure (summary_fields, filters, grouping, etc.).  This
+/// function only rejects obviously malformed input so the CLI fails fast
+/// with a clear message rather than forwarding garbage to the server.
+fn validate_summarize_rest_input(input: Value) -> Result<Value> {
+    if !input.is_object() {
+        return Err(
+            AppError::invalid_input("entity summarize-rest input must be a JSON object")
+                .with_operation("validate_summarize_rest_input")
+                .with_expected_shape(
+                    "a JSON object containing `summary_fields`, `filters`, and optional `grouping`",
+                ),
+        );
+    }
+    Ok(input)
 }

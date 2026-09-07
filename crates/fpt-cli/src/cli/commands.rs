@@ -437,6 +437,15 @@ pub enum EntityCommands {
         #[arg(long = "filter-dsl")]
         filter_dsl: Option<String>,
     },
+    #[command(
+        name = "summarize-rest",
+        about = "Summarize entity records using the REST _summarize endpoint"
+    )]
+    SummarizeRest {
+        entity: String,
+        #[arg(long)]
+        input: String,
+    },
     #[command(subcommand)]
     Batch(BatchEntityCommands),
 }
@@ -550,6 +559,14 @@ pub enum BatchEntityCommands {
         about = "Count records for multiple entity types in one CLI invocation"
     )]
     Count {
+        #[arg(long)]
+        input: String,
+    },
+    #[command(
+        name = "server",
+        about = "Execute a server-side transactional batch of entity operations"
+    )]
+    Server {
         #[arg(long)]
         input: String,
     },

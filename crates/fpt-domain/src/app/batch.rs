@@ -749,6 +749,22 @@ where
             elapsed_ms(started_at),
         ))
     }
+
+    /// Execute a server-side batch request via the REST `_batch` endpoint.
+    ///
+    /// Unlike the client-side batch commands that orchestrate multiple
+    /// individual REST calls, this sends a single transactional request to
+    /// `POST /api/{ver}/entity/_batch`.  The server executes all operations
+    /// atomically: either all succeed or all roll back.
+    pub async fn entity_batch_server(
+        &self,
+        overrides: ConnectionOverrides,
+        input: Value,
+    ) -> Result<Value> {
+        let config = ConnectionSettings::resolve(overrides)?;
+        let body = validate_batch_server_input(input)?;
+        self.transport.entity_batch_server(&config, &body).await
+    }
 }
 
 /// Build a single successful batch result entry.
@@ -1362,4 +1378,23 @@ fn parse_batch_count_input(input: Value) -> Result<Vec<Value>> {
     };
 
     Ok(items)
+}
+
+/// Validate the input for the server-side batch endpoint.
+///
+/// The body must be a JSON object; the server validates the detailed
+/// request structure (`requests` array, per-request entity/method, etc.).
+/// This function only rejects obviously malformed input so the CLI fails
+/// fast with a clear message.
+fn validate_batch_server_input(input: Value) -> Result<Value> {
+    if !input.is_object() {
+        return Err(
+            AppError::invalid_input("entity batch-server input must be a JSON object")
+                .with_operation("validate_batch_server_input")
+                .with_expected_shape(
+                    "a JSON object containing `requests` (array of server-side batch operation descriptors)",
+                ),
+        );
+    }
+    Ok(input)
 }
