@@ -45,12 +45,18 @@ const TOKEN_CACHE_POISONED: &str = "token cache is poisoned";
 /// the token is refreshed before it actually expires on the server.
 const TOKEN_EXPIRY_MARGIN_SECS: u64 = 30;
 
+/// Query-string and search-body parameters for entity find operations.
+///
+/// When `search` is `Some`, the find request uses the ShotGrid REST `_search`
+/// endpoint (POST with a vendor content type).  Otherwise a standard GET with
+/// query-string filters is used.
 #[derive(Debug, Clone, Default)]
 pub struct FindParams {
     pub query: Vec<(String, String)>,
     pub search: Option<Value>,
 }
 
+/// Parameters for requesting a pre-signed upload URL from ShotGrid.
 #[derive(Debug, Clone, Copy)]
 pub struct UploadUrlRequest<'a> {
     pub entity: &'a str,
@@ -61,6 +67,10 @@ pub struct UploadUrlRequest<'a> {
     pub multipart_upload: bool,
 }
 
+/// Serializable description of an HTTP request that *would* be made.
+///
+/// Returned by `--dry-run` so agents and operators can inspect the planned
+/// request (method, path, body, risk level) without actually executing it.
 #[derive(Debug, Clone, Serialize)]
 pub struct RequestPlan {
     pub transport: &'static str,
@@ -554,11 +564,7 @@ impl RestTransport {
         payload: &AccessTokenPayload,
     ) -> Result<()> {
         let expires_at = payload.expires_in.map(|seconds| {
-            let effective_seconds = if seconds > TOKEN_EXPIRY_MARGIN_SECS {
-                seconds - TOKEN_EXPIRY_MARGIN_SECS
-            } else {
-                seconds
-            };
+            let effective_seconds = seconds.saturating_sub(TOKEN_EXPIRY_MARGIN_SECS).max(1);
             Instant::now() + Duration::from_secs(effective_seconds)
         });
 

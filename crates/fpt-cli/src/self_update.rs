@@ -25,7 +25,12 @@ const SUPPORTED_TARGETS: &[&str] = &[
     "aarch64-apple-darwin",
 ];
 /// Transport label used in error envelopes for GitHub API calls.
-const TRANSPORT_REST: &str = "rest";
+///
+/// Reuses the same value as [`fpt_domain::transport::TRANSPORT_REST`] but is
+/// defined locally because the domain constant is `pub(crate)` and `self_update`
+/// lives in a different crate.  If the label ever changes, a `const` assertion
+/// or shared public constant in `fpt_core` should replace both definitions.
+const TRANSPORT_GITHUB: &str = "github_api";
 
 #[derive(Debug, Clone, Copy)]
 enum ArchiveKind {
@@ -338,7 +343,7 @@ async fn fetch_release(
                 "could not decode GitHub release metadata as JSON: {error}"
             ))
             .with_operation("fetch_release")
-            .with_transport(TRANSPORT_REST)
+            .with_transport(TRANSPORT_GITHUB)
             .with_expected_shape(
                 "a GitHub release JSON object with `tag_name`, `html_url`, and `assets`",
             )
@@ -510,7 +515,7 @@ fn map_network_error(message: &str) -> impl FnOnce(reqwest::Error) -> AppError +
     move |error| {
         AppError::network(format!("{message}: {error}"))
             .with_operation("self_update")
-            .with_transport(TRANSPORT_REST)
+            .with_transport(TRANSPORT_GITHUB)
     }
 }
 

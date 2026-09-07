@@ -1,3 +1,8 @@
+//! `fpt` — CLI entry point for Flow Production Tracking operations.
+//!
+//! Parses command-line arguments via `clap`, dispatches to the domain layer,
+//! and prints structured JSON (or TOON) output to stdout/stderr.
+
 #![allow(clippy::result_large_err)]
 
 mod cli;

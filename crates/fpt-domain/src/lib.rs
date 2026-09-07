@@ -1,3 +1,12 @@
+//! `fpt-domain` — business logic and transport layer for ShotGrid/FPT operations.
+//!
+//! This crate contains the [`App`] facade, the [`ShotgridTransport`] trait with
+//! its default [`RestTransport`] implementation, connection/config resolution,
+//! the filter DSL parser, and all command-level capability specifications.
+//!
+//! Library consumers (CLI, FFI, PyO3 bindings) depend on `fpt-domain` for the
+//! full ShotGrid domain model without any CLI argument parsing.
+
 #![allow(clippy::result_large_err)]
 
 pub mod app;
