@@ -135,6 +135,7 @@ pub enum Credentials {
 }
 
 impl Credentials {
+    #[must_use]
     pub const fn auth_mode(&self) -> AuthMode {
         match self {
             Self::Script { .. } => AuthMode::Script,
@@ -143,6 +144,7 @@ impl Credentials {
         }
     }
 
+    #[must_use]
     pub fn principal(&self) -> Option<&str> {
         match self {
             Self::Script { script_name, .. } => Some(script_name),
@@ -300,10 +302,12 @@ impl ConnectionSettings {
         })
     }
 
+    #[must_use]
     pub const fn auth_mode(&self) -> AuthMode {
         self.credentials.auth_mode()
     }
 
+    #[must_use]
     pub fn summary(&self) -> ConnectionSummary {
         ConnectionSummary {
             site: self.site.clone(),
@@ -468,6 +472,7 @@ fn validate_profile_name(profile_name: &str) -> Result<()> {
     Ok(())
 }
 
+#[must_use]
 pub fn api_version_or_default(value: Option<&str>) -> String {
     value
         .map(str::trim)

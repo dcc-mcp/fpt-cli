@@ -26,7 +26,7 @@ pub(crate) const TRANSPORT_REST: &str = "rest";
 /// Transport label for the legacy JSON-RPC API surface.
 const TRANSPORT_RPC: &str = "rpc";
 
-/// Custom `Content-Type` header required by the ShotGrid REST `_search`
+/// Custom `Content-Type` header required by the `ShotGrid` REST `_search`
 /// endpoint.  Using a named constant avoids scattering the vendor media-type
 /// across multiple call sites.
 const SHOTGRID_SEARCH_CONTENT_TYPE: &str = "application/vnd+shotgun.api3_hash+json";
@@ -47,7 +47,7 @@ const TOKEN_EXPIRY_MARGIN_SECS: u64 = 30;
 
 /// Query-string and search-body parameters for entity find operations.
 ///
-/// When `search` is `Some`, the find request uses the ShotGrid REST `_search`
+/// When `search` is `Some`, the find request uses the `ShotGrid` REST `_search`
 /// endpoint (POST with a vendor content type).  Otherwise a standard GET with
 /// query-string filters is used.
 #[derive(Debug, Clone, Default)]
@@ -56,7 +56,7 @@ pub struct FindParams {
     pub search: Option<Value>,
 }
 
-/// Parameters for requesting a pre-signed upload URL from ShotGrid.
+/// Parameters for requesting a pre-signed upload URL from `ShotGrid`.
 #[derive(Debug, Clone, Copy)]
 pub struct UploadUrlRequest<'a> {
     pub entity: &'a str,
@@ -100,9 +100,9 @@ struct CachedAccessToken {
     expires_at: Option<Instant>,
 }
 
-/// Abstraction over the ShotGrid/FPT network transport layer.
+/// Abstraction over the `ShotGrid`/FPT network transport layer.
 ///
-/// Each method corresponds to a single ShotGrid API operation.  The default
+/// Each method corresponds to a single `ShotGrid` API operation.  The default
 /// production implementation is [`RestTransport`], which speaks both the REST
 /// API and the legacy JSON-RPC surface.  Test code can supply a recording or
 /// stub transport by implementing this trait.
@@ -408,7 +408,7 @@ pub trait ShotgridTransport {
     /// This is an unauthenticated endpoint (`GET /api/{version}/`) that returns
     /// the server and REST API version metadata.
     async fn rest_api_version(&self, site: &str, api_version: &str) -> Result<Value>;
-    /// Download the OpenAPI specification for the ShotGrid REST API.
+    /// Download the OpenAPI specification for the `ShotGrid` REST API.
     ///
     /// This is an unauthenticated endpoint (`GET /api/{version}/spec.{format}`)
     /// that returns the OpenAPI v3 spec in the requested format (json or yaml).
@@ -1764,7 +1764,7 @@ fn revive_query() -> Vec<(String, String)> {
     vec![("revive".to_string(), "true".to_string())]
 }
 
-/// Convert a ShotGrid entity type name (e.g. `"HumanUser"`, `"CustomEntity01"`)
+/// Convert a `ShotGrid` entity type name (e.g. `"HumanUser"`, `"CustomEntity01"`)
 /// into the plural, snake_case REST collection path segment used by the API
 /// (e.g. `"human_users"`, `"custom_entity_01s"`).
 ///

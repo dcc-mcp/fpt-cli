@@ -18,14 +18,14 @@ where
     /// Fetch the REST API version information.
     ///
     /// Calls `GET /api/{version}/` which is an unauthenticated endpoint that
-    /// returns the ShotGrid server version and REST API version metadata.
+    /// returns the `ShotGrid` server version and REST API version metadata.
     pub async fn rest_api_version(&self, overrides: ConnectionOverrides) -> Result<Value> {
         let site = resolve_site(overrides.clone())?;
         let api_version = api_version_or_default(overrides.api_version.as_deref());
         self.transport.rest_api_version(&site, &api_version).await
     }
 
-    /// Download the OpenAPI specification for the ShotGrid REST API.
+    /// Download the OpenAPI specification for the `ShotGrid` REST API.
     ///
     /// Calls `GET /api/{version}/spec.{format}` which is an unauthenticated
     /// endpoint returning the OpenAPI v3 spec in JSON or YAML format.
