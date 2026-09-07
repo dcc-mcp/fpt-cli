@@ -415,7 +415,11 @@ async fn token_refresh_is_attempted_when_access_token_expires() {
         .await
         .expect("schema entities via refreshed token succeeds");
 
-    assert_eq!(initial_auth.calls(), 1, "credential auth should happen once");
+    assert_eq!(
+        initial_auth.calls(),
+        1,
+        "credential auth should happen once"
+    );
     assert_eq!(refresh_auth.calls(), 1, "refresh grant should happen once");
     assert_eq!(schema_first.calls(), 1);
     assert_eq!(schema_refreshed.calls(), 1);
@@ -480,8 +484,16 @@ async fn token_refresh_falls_back_to_credential_auth_on_rejection() {
         .await
         .expect("schema entities via fallback credential auth succeeds");
 
-    assert_eq!(credential_auth.calls(), 2, "credential auth should be called twice (initial + fallback)");
-    assert_eq!(refresh_rejected.calls(), 1, "refresh should be attempted once");
+    assert_eq!(
+        credential_auth.calls(),
+        2,
+        "credential auth should be called twice (initial + fallback)"
+    );
+    assert_eq!(
+        refresh_rejected.calls(),
+        1,
+        "refresh should be attempted once"
+    );
     assert_eq!(response["data"][0], "Shot");
 }
 

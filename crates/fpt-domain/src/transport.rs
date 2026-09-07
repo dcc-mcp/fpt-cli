@@ -791,9 +791,7 @@ impl RestTransport {
                 .with_operation("request_access_token")
                 .with_transport(TRANSPORT_REST)
                 .with_resource("auth/access_token")
-                .with_retryable_reason(
-                    "transient network failure while requesting an access token",
-                )
+                .with_retryable_reason("transient network failure while requesting an access token")
                 .retryable(true)
             })?;
 
