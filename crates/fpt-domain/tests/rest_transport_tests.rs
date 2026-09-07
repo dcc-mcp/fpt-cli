@@ -457,7 +457,7 @@ async fn token_refresh_falls_back_to_credential_auth_on_rejection() {
     });
 
     // Schema endpoint using the short-lived token.
-    let schema = server.mock(|when, then| {
+    let _schema = server.mock(|when, then| {
         when.method(GET)
             .path("/api/v1.1/schema")
             .header("authorization", "Bearer token-short");
