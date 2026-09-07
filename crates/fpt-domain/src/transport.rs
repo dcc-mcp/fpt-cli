@@ -431,11 +431,8 @@ pub trait ShotgridTransport {
     ///
     /// Each request in the batch array describes one operation.  All operations
     /// succeed or fail together — the server rolls back if any request fails.
-    async fn entity_batch_server(
-        &self,
-        config: &ConnectionSettings,
-        body: &Value,
-    ) -> Result<Value>;
+    async fn entity_batch_server(&self, config: &ConnectionSettings, body: &Value)
+    -> Result<Value>;
 }
 
 #[derive(Debug, Clone)]

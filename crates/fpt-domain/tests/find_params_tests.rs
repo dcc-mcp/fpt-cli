@@ -356,7 +356,12 @@ impl ShotgridTransport for RecordingTransport {
     async fn openapi_spec(&self, _: &str, _: &str, _: &str) -> Result<Value> {
         Ok(json!({}))
     }
-    async fn entity_summarize_rest(&self, _: &ConnectionSettings, _: &str, _: &Value) -> Result<Value> {
+    async fn entity_summarize_rest(
+        &self,
+        _: &ConnectionSettings,
+        _: &str,
+        _: &Value,
+    ) -> Result<Value> {
         Ok(json!({}))
     }
     async fn entity_batch_server(&self, _: &ConnectionSettings, _: &Value) -> Result<Value> {
