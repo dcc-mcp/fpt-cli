@@ -2635,8 +2635,10 @@ async fn entity_write_commands_apply_dry_run_and_policy_guards() {
         delete_dry_run["plan"]["path"],
         "/api/v1.1/entity/playlists/99"
     );
-    assert_eq!(revive_dry_run["plan"]["path"], "/api3/json");
-    assert_eq!(revive_dry_run["plan"]["body"]["method_name"], "revive");
+    assert_eq!(revive_dry_run["plan"]["path"], "/api/v1.1/entity/shots/860");
+    assert_eq!(revive_dry_run["plan"]["query"][0][0], "revive");
+    assert_eq!(revive_dry_run["plan"]["query"][0][1], "true");
+    assert_eq!(revive_dry_run["plan"]["body"], json!(null));
     assert_eq!(revive_response, json!(true));
     assert_eq!(delete_error.envelope().code, "POLICY_BLOCKED");
     assert_eq!(
@@ -3327,7 +3329,7 @@ async fn entity_batch_revive_dry_run_returns_plan() {
     assert_eq!(result["dry_run"], true);
     let plans = result["plans"].as_array().expect("plans array");
     assert_eq!(plans.len(), 2);
-    assert_eq!(plans[0]["path"], "/api3/json");
+    assert_eq!(plans[0]["path"], "/api/v1.1/entity/shots/860");
 }
 
 #[tokio::test]

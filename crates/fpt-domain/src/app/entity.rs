@@ -141,7 +141,12 @@ where
     ) -> Result<Value> {
         validate_entity_type(entity)?;
         if dry_run {
-            return Ok(dry_run_response(plan_entity_revive(entity, id)));
+            let api_version = api_version_or_default(overrides.api_version.as_deref());
+            return Ok(dry_run_response(plan_entity_revive(
+                &api_version,
+                entity,
+                id,
+            )));
         }
 
         let config = ConnectionSettings::resolve(overrides)?;

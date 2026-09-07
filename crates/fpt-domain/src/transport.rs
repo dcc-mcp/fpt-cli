@@ -599,19 +599,140 @@ impl RestTransport {
         Ok(())
     }
 
-    async fn access_token_response(
+    /// Retrieve a cached refresh token regardless of access-token expiry.
+    ///
+    /// Unlike [`cached_access_token`] — which returns `None` when the access
+    /// token is expired — this method looks through the cache for a refresh
+    /// token even when the access token has already lapsed.  This allows the
+    /// caller to attempt a lightweight `refresh_token` grant before falling
+    /// back to a full credential-based authentication.
+    fn cached_refresh_token(&self, config: &ConnectionSettings) -> Result<Option<String>> {
+        let cache = self.token_cache.lock().map_err(|_| {
+            AppError::internal(TOKEN_CACHE_POISONED).with_operation("read_token_cache")
+        })?;
+        let Some(cached) = cache.as_ref() else {
+            return Ok(None);
+        };
+        if cached.cache_key != Self::token_cache_key(config) {
+            return Ok(None);
+        }
+        Ok(cached.payload.refresh_token.clone())
+    }
+
+    /// Extract an [`AccessTokenPayload`] from a parsed JSON token response.
+    ///
+    /// Shared by both [`request_fresh_access_token`] and [`try_refresh_token`]
+    /// to avoid duplicating the field-extraction logic.
+    fn extract_token_payload(body: &Value) -> Result<AccessTokenPayload> {
+        let access_token = body
+            .get("access_token")
+            .and_then(Value::as_str)
+            .ok_or_else(|| {
+                AppError::auth("ShotGrid access token response is missing `access_token`")
+                    .with_operation("extract_token_payload")
+                    .with_transport(TRANSPORT_REST)
+                    .with_resource("auth/access_token")
+                    .with_expected_shape(
+                        "a JSON object containing a string field `access_token`",
+                    )
+                    .with_hint(
+                        "Verify the credentials and auth mode, then retry the authentication request.",
+                    )
+                    .with_detail("response_body", body.clone())
+            })?;
+
+        Ok(AccessTokenPayload {
+            access_token: access_token.to_string(),
+            token_type: body
+                .get("token_type")
+                .and_then(Value::as_str)
+                .map(ToString::to_string),
+            expires_in: body.get("expires_in").and_then(Value::as_u64),
+            refresh_token: body
+                .get("refresh_token")
+                .and_then(Value::as_str)
+                .map(ToString::to_string),
+        })
+    }
+
+    /// Attempt a lightweight token refresh using a cached `refresh_token`.
+    ///
+    /// Returns `Ok(Some(payload))` on success, `Ok(None)` when no refresh
+    /// token is available, and silently returns `Ok(None)` on server-side
+    /// rejection so the caller can fall back to full credential auth.
+    async fn try_refresh_token(
         &self,
         config: &ConnectionSettings,
-    ) -> Result<AccessTokenPayload> {
-        let debug = Self::is_debug();
+        debug: bool,
+    ) -> Result<Option<AccessTokenPayload>> {
+        let refresh_token = match self.cached_refresh_token(config)? {
+            Some(rt) => rt,
+            None => return Ok(None),
+        };
 
-        if let Some(cached) = self.cached_access_token(config)? {
-            if debug {
-                eprintln!("[debug] reuse cached access token for {}", config.site);
-            }
-            return Ok(cached);
+        let url = self.build_url(config, "auth/access_token", &[])?;
+        let form: Vec<(&str, &str)> = vec![
+            ("grant_type", "refresh_token"),
+            ("refresh_token", &refresh_token),
+        ];
+
+        if debug {
+            eprintln!(
+                "[debug] attempting token refresh at {} (refresh_token len={})",
+                url,
+                refresh_token.len()
+            );
         }
 
+        let response = match self
+            .client
+            .post(url)
+            .header(ACCEPT, "application/json")
+            .form(&form)
+            .send()
+            .await
+        {
+            Ok(resp) => resp,
+            Err(error) => {
+                if debug {
+                    eprintln!("[debug] token refresh network error, falling back: {error}");
+                }
+                return Ok(None);
+            }
+        };
+
+        // A non-success status means the refresh token was rejected (expired,
+        // revoked, or unsupported by the server).  Fall back silently.
+        if !response.status().is_success() {
+            if debug {
+                eprintln!(
+                    "[debug] token refresh rejected (HTTP {}), falling back to credential auth",
+                    response.status()
+                );
+            }
+            return Ok(None);
+        }
+
+        let body = Self::parse_response(response, TRANSPORT_REST).await?;
+        let payload = Self::extract_token_payload(&body)?;
+        self.store_access_token(config, &payload)?;
+
+        if debug {
+            eprintln!("[debug] token refresh succeeded for {}", config.site);
+        }
+
+        Ok(Some(payload))
+    }
+
+    /// Perform a full credential-based authentication exchange.
+    ///
+    /// Builds the form parameters from [`ConnectionSettings::credentials`],
+    /// POSTs to `auth/access_token`, extracts the payload, and caches it.
+    async fn request_fresh_access_token(
+        &self,
+        config: &ConnectionSettings,
+        debug: bool,
+    ) -> Result<AccessTokenPayload> {
         let url = self.build_url(config, "auth/access_token", &[])?;
 
         let mut form: Vec<(&str, &str)> = Vec::new();
@@ -670,38 +791,46 @@ impl RestTransport {
                 .with_operation("request_access_token")
                 .with_transport(TRANSPORT_REST)
                 .with_resource("auth/access_token")
-                .with_retryable_reason("transient network failure while requesting an access token")
+                .with_retryable_reason(
+                    "transient network failure while requesting an access token",
+                )
                 .retryable(true)
             })?;
 
         let body = Self::parse_response(response, TRANSPORT_REST).await?;
-        let access_token = body
-            .get("access_token")
-            .and_then(Value::as_str)
-            .ok_or_else(|| {
-                AppError::auth("ShotGrid access token response is missing `access_token`")
-                    .with_operation("request_access_token")
-                    .with_transport(TRANSPORT_REST)
-                    .with_resource("auth/access_token")
-                    .with_expected_shape("a JSON object containing a string field `access_token`")
-                    .with_hint("Verify the credentials and auth mode, then retry the authentication request.")
-                    .with_detail("response_body", body.clone())
-            })?;
-
-        let payload = AccessTokenPayload {
-            access_token: access_token.to_string(),
-            token_type: body
-                .get("token_type")
-                .and_then(Value::as_str)
-                .map(ToString::to_string),
-            expires_in: body.get("expires_in").and_then(Value::as_u64),
-            refresh_token: body
-                .get("refresh_token")
-                .and_then(Value::as_str)
-                .map(ToString::to_string),
-        };
+        let payload = Self::extract_token_payload(&body)?;
         self.store_access_token(config, &payload)?;
         Ok(payload)
+    }
+
+    /// Obtain a valid access token, using the fastest available strategy:
+    ///
+    /// 1. **Cached** — return immediately if a non-expired token is cached.
+    /// 2. **Refresh** — attempt a lightweight `refresh_token` grant when a
+    ///    cached refresh token exists (best-effort; failure falls through).
+    /// 3. **Credential auth** — full `client_credentials` / `password` /
+    ///    `session_token` exchange as the final fallback.
+    async fn access_token_response(
+        &self,
+        config: &ConnectionSettings,
+    ) -> Result<AccessTokenPayload> {
+        let debug = Self::is_debug();
+
+        // 1. Fast path — reuse a cached, non-expired token.
+        if let Some(cached) = self.cached_access_token(config)? {
+            if debug {
+                eprintln!("[debug] reuse cached access token for {}", config.site);
+            }
+            return Ok(cached);
+        }
+
+        // 2. Best-effort refresh — cheaper than a full credential exchange.
+        if let Some(refreshed) = self.try_refresh_token(config, debug).await? {
+            return Ok(refreshed);
+        }
+
+        // 3. Full credential-based authentication.
+        self.request_fresh_access_token(config, debug).await
     }
 
     /// Check whether the response is a 429 rate-limit and, if eligible for
@@ -1100,18 +1229,9 @@ impl ShotgridTransport for RestTransport {
         entity: &str,
         id: u64,
     ) -> Result<Value> {
-        self.rpc_request(
-            &config.site,
-            "revive",
-            vec![
-                Self::rpc_auth_params(config),
-                json!({
-                    "type": entity,
-                    "id": id,
-                }),
-            ],
-        )
-        .await
+        let path = entity_instance_path(entity, id);
+        self.authorized_json_request(config, Method::POST, &path, &revive_query(), None)
+            .await
     }
 
     async fn work_schedule_read(&self, config: &ConnectionSettings, body: &Value) -> Result<Value> {
@@ -1887,25 +2007,18 @@ pub(crate) fn plan_entity_delete(api_version: &str, entity: &str, id: u64) -> Re
     }
 }
 
-pub(crate) fn plan_entity_revive(entity: &str, id: u64) -> RequestPlan {
+pub(crate) fn plan_entity_revive(api_version: &str, entity: &str, id: u64) -> RequestPlan {
     RequestPlan {
-        transport: TRANSPORT_RPC,
+        transport: TRANSPORT_REST,
         method: "POST",
-        path: "/api3/json".to_string(),
+        path: format!(
+            "/api/{api_version}/entity/{}/{}",
+            entity_collection_path(entity),
+            id
+        ),
         risk: RiskLevel::Write,
-        query: Vec::new(),
-        body: Some(json!({
-            "method_name": "revive",
-            "params": [
-                {
-                    "type": entity,
-                    "id": id,
-                }
-            ]
-        })),
-        notes: vec![
-            DRY_RUN_NOTE,
-            "RPC auth params are injected from the connection config at execution time",
-        ],
+        query: vec![("revive".to_string(), "true".to_string())],
+        body: None,
+        notes: vec![DRY_RUN_NOTE],
     }
 }

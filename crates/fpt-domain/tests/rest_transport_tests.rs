@@ -212,24 +212,6 @@ async fn note_threads_use_documented_note_thread_endpoint() {
 #[tokio::test]
 async fn rpc_methods_use_expected_paths_and_payloads() {
     let server = MockServer::start();
-    let revive = server.mock(|when, then| {
-        when.method(POST).path("/api3/json").json_body(json!({
-            "method_name": "revive",
-            "params": [
-                {
-                    "script_name": "openclaw",
-                    "script_key": "secret-key"
-                },
-                {
-                    "type": "Shot",
-                    "id": 860
-                }
-            ]
-        }));
-        then.status(200)
-            .header("content-type", "application/json")
-            .json_body(json!({"results": true}));
-    });
     let work_schedule = server.mock(|when, then| {
         when.method(POST).path("/api3/json").json_body(json!({
             "method_name": "work_schedule_read",
@@ -294,10 +276,6 @@ async fn rpc_methods_use_expected_paths_and_payloads() {
     let transport = RestTransport::default();
     let config = script_config(&server);
 
-    let revive_response = transport
-        .entity_revive(&config, "Shot", 860)
-        .await
-        .expect("entity revive succeeds");
     let work_schedule_response = transport
         .work_schedule_read(
             &config,
@@ -328,12 +306,183 @@ async fn rpc_methods_use_expected_paths_and_payloads() {
         .await
         .expect("entity summarize succeeds");
 
-    assert_eq!(revive.calls(), 1);
     assert_eq!(work_schedule.calls(), 1);
     assert_eq!(summarize.calls(), 1);
-    assert_eq!(revive_response, json!(true));
     assert_eq!(work_schedule_response["2026-03-16"]["working"], true);
     assert_eq!(summarize_response["summaries"]["id"]["record_count"], 3);
+}
+
+// --- Entity revive now uses REST POST ?revive=true ---
+
+#[tokio::test]
+async fn entity_revive_uses_rest_post_with_revive_query_param() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let revive = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/entity/shots/860")
+            .query_param("revive", "true")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"type": "Shot", "id": 860}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .entity_revive(&config, "Shot", 860)
+        .await
+        .expect("entity revive succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(revive.calls(), 1);
+    assert_eq!(response["data"]["id"], 860);
+}
+
+// --- Token refresh lifecycle ---
+
+#[tokio::test]
+async fn token_refresh_is_attempted_when_access_token_expires() {
+    let server = MockServer::start();
+
+    // First auth returns a short-lived token WITH a refresh_token.
+    let initial_auth = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/auth/access_token")
+            .body_includes("grant_type=client_credentials");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "access_token": "token-short",
+                "token_type": "Bearer",
+                "expires_in": 1,
+                "refresh_token": "refresh-abc"
+            }));
+    });
+
+    // Refresh grant returns a new long-lived token.
+    let refresh_auth = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/auth/access_token")
+            .body_includes("grant_type=refresh_token")
+            .body_includes("refresh_token=refresh-abc");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "access_token": "token-refreshed",
+                "token_type": "Bearer",
+                "expires_in": 3600
+            }));
+    });
+
+    // Schema mock for the first call (using short-lived token).
+    let schema_first = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/schema")
+            .header("authorization", "Bearer token-short");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": ["Shot"]}));
+    });
+
+    // Schema mock for the second call (using refreshed token).
+    let schema_refreshed = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/schema")
+            .header("authorization", "Bearer token-refreshed");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": ["Asset"]}));
+    });
+
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    // First call triggers credential auth, stores token with expires_in=1.
+    let first_response = transport
+        .schema_entities(&config)
+        .await
+        .expect("first schema call succeeds");
+    assert_eq!(first_response["data"][0], "Shot");
+
+    // Wait for the 1-second effective TTL to expire.
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+
+    // Second call: cached token expired → try refresh → get "token-refreshed".
+    let second_response = transport
+        .schema_entities(&config)
+        .await
+        .expect("schema entities via refreshed token succeeds");
+
+    assert_eq!(initial_auth.calls(), 1, "credential auth should happen once");
+    assert_eq!(refresh_auth.calls(), 1, "refresh grant should happen once");
+    assert_eq!(schema_first.calls(), 1);
+    assert_eq!(schema_refreshed.calls(), 1);
+    assert_eq!(second_response["data"][0], "Asset");
+}
+
+#[tokio::test]
+async fn token_refresh_falls_back_to_credential_auth_on_rejection() {
+    let server = MockServer::start();
+
+    // Auth always returns a short-lived token WITH a refresh_token.
+    // We allow multiple calls since the fallback will re-do credential auth.
+    let credential_auth = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/auth/access_token")
+            .body_includes("grant_type=client_credentials");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "access_token": "token-short",
+                "token_type": "Bearer",
+                "expires_in": 1,
+                "refresh_token": "refresh-expired"
+            }));
+    });
+
+    // Refresh grant is REJECTED (e.g., expired refresh token).
+    let refresh_rejected = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/auth/access_token")
+            .body_includes("grant_type=refresh_token");
+        then.status(401)
+            .header("content-type", "application/json")
+            .json_body(json!({"errors": ["Refresh token expired"]}));
+    });
+
+    // Schema endpoint using the short-lived token.
+    let schema = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/schema")
+            .header("authorization", "Bearer token-short");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": ["Shot"]}));
+    });
+
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    // First call triggers credential auth.
+    let _ = transport
+        .schema_entities(&config)
+        .await
+        .expect("first schema call succeeds");
+
+    // Wait for the token to expire.
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+
+    // Second call: refresh attempted → rejected → falls back to credential auth.
+    let response = transport
+        .schema_entities(&config)
+        .await
+        .expect("schema entities via fallback credential auth succeeds");
+
+    assert_eq!(credential_auth.calls(), 2, "credential auth should be called twice (initial + fallback)");
+    assert_eq!(refresh_rejected.calls(), 1, "refresh should be attempted once");
+    assert_eq!(response["data"][0], "Shot");
 }
 
 #[tokio::test]
