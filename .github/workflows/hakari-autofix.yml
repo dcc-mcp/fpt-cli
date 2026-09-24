@@ -1,0 +1,163 @@
+name: Hakari Autofix
+
+# `workspace-hack/Cargo.toml` is a generated artifact of the dependency graph.
+# A dependency bump that changes the feature graph leaves it stale, and `just ci`
+# then fails on its `hakari-check` step. This workflow regenerates the generated
+# files on bot dependency PRs, so a bump and its generated output land on the
+# same branch instead of silently rotting on main.
+#
+# Renovate's `postUpgradeTasks.commands` is deliberately not used: `allowedCommands`
+# is a global-only option, so the hosted Mend Renovate App cannot allowlist the
+# command and it would never run.
+#
+# Pushing needs HAKARI_AUTOFIX_TOKEN, and it has to be stored twice:
+#   * as an Actions secret   -> read by renovate and workflow_dispatch runs
+#   * as a Dependabot secret -> read by Dependabot runs
+# A push made with GITHUB_TOKEN does not start a new workflow run, so it would
+# move the PR head to a commit no CI run ever validates. Without the token this
+# job only reports the drift and leaves the branch untouched.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or ref to regenerate workspace-hack on"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hakari-autofix-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_HTTP_TIMEOUT: "600"
+  CARGO_NET_RETRY: "10"
+  # Pinned: an unpinned cargo-hakari can flip `hakari-check` without any
+  # dependency change. Keep in sync with .github/workflows/ci.yml.
+  CARGO_HAKARI_VERSION: "0.9.38"
+
+jobs:
+  regenerate:
+    name: Regenerate workspace-hack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # In-repo bot branches only: never check out fork code with a write token.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.fork == false &&
+       contains(fromJSON('["dependabot[bot]", "renovate[bot]"]'), github.actor))
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.event.pull_request.head.ref }}
+          # Falls back to the read-only GITHUB_TOKEN when no PAT is configured:
+          # enough to inspect the branch, and the push step is gated on the PAT.
+          token: ${{ secrets.HAKARI_AUTOFIX_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: Setup vx
+        uses: loonghao/vx@main
+        with:
+          version: "0.8.0"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Setup tools (vx)
+        run: vx setup
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install pinned cargo-hakari
+        run: vx cargo install cargo-hakari --locked --version "${CARGO_HAKARI_VERSION}"
+
+      - name: Check push credentials
+        id: creds
+        # Only the comparison result reaches the log, never the token itself.
+        run: echo "can_push=${{ secrets.HAKARI_AUTOFIX_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect workspace-hack drift
+        id: drift
+        run: |
+          if vx just hakari-check; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+            echo "workspace-hack is up to date."
+          else
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::workspace-hack is stale."
+          fi
+
+      - name: Regenerate, verify and push
+        if: steps.drift.outputs.drift == 'true' && steps.creds.outputs.can_push == 'true'
+        env:
+          TARGET_REF: ${{ github.event.pull_request.head.ref || inputs.ref }}
+        run: |
+          set -u
+
+          vx just hakari-generate
+
+          # Re-run the gate locally: never push a commit that does not satisfy
+          # the same commands `just ci` runs.
+          if ! vx just hakari-check; then
+            echo "::error::workspace-hack is still stale after regeneration; refusing to push."
+            exit 1
+          fi
+
+          if git diff --quiet -- Cargo.toml Cargo.lock workspace-hack crates; then
+            echo "::notice::Regeneration produced no file changes."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- Cargo.toml Cargo.lock workspace-hack crates
+          git commit -m "chore(hakari): regenerate workspace-hack"
+
+          # Pushing with the PAT starts a new CI run on the pushed commit, so the
+          # new head is validated. The GITHUB_TOKEN fallback never reaches here.
+          if git push origin "HEAD:refs/heads/${TARGET_REF}"; then
+            {
+              echo "Regenerated \`workspace-hack\` and pushed to \`${TARGET_REF}\`."
+              echo ""
+              echo "CI re-runs on the pushed commit, so the new head is validated."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "::warning::Detected workspace-hack drift but could not push to ${TARGET_REF}. Check that HAKARI_AUTOFIX_TOKEN is valid and that the branch is not protected; the drift still fails Quality Checks on the current head."
+          {
+            echo "### workspace-hack drift detected (push failed)"
+            echo ""
+            echo "Regenerated the files locally but could not push to \`${TARGET_REF}\`."
+            echo "The drift still fails \`Quality Checks\` on the current head, so nothing"
+            echo "is hidden. Run \`vx just hakari-generate\` and commit the result, or fix"
+            echo "the \`HAKARI_AUTOFIX_TOKEN\` configuration."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report drift without pushing
+        if: steps.drift.outputs.drift == 'true' && steps.creds.outputs.can_push != 'true'
+        run: |
+          echo "::warning::workspace-hack is stale, but HAKARI_AUTOFIX_TOKEN is not configured, so the branch was left untouched. Store it as both an Actions secret and a Dependabot secret to let this workflow push the fix."
+          {
+            echo "### workspace-hack drift detected (not pushed)"
+            echo ""
+            echo "\`HAKARI_AUTOFIX_TOKEN\` is not configured, so this branch was left"
+            echo "untouched: a push made with \`GITHUB_TOKEN\` would move the PR head"
+            echo "without starting a new CI run, which hides the failing check instead"
+            echo "of fixing it."
+            echo ""
+            echo "Run \`vx just hakari-generate\` and commit the result, or store the token"
+            echo "as both an Actions secret and a Dependabot secret."
+          } >> "$GITHUB_STEP_SUMMARY"

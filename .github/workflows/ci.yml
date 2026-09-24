@@ -19,6 +19,9 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_HTTP_TIMEOUT: "600"
   CARGO_NET_RETRY: "10"
+  # Pinned: an unpinned cargo-hakari can flip `hakari-check` without any
+  # dependency change. Keep in sync with .github/workflows/hakari-autofix.yml.
+  CARGO_HAKARI_VERSION: "0.9.38"
 
 jobs:
   quality:
@@ -45,7 +48,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-hakari
-        run: vx cargo install cargo-hakari --locked
+        run: vx cargo install cargo-hakari --locked --version "${CARGO_HAKARI_VERSION}"
 
       - name: Run quality checks
         run: vx just ci
