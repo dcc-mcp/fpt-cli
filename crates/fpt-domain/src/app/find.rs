@@ -395,14 +395,12 @@ fn validate_entity_link_condition(items: &[Value]) -> Result<()> {
         return Ok(());
     }
 
-    let field = match items[0].as_str() {
-        Some(f) => f,
-        None => return Ok(()),
+    let Some(field) = items[0].as_str() else {
+        return Ok(());
     };
 
-    let operator = match items[1].as_str() {
-        Some(op) => op,
-        None => return Ok(()),
+    let Some(operator) = items[1].as_str() else {
+        return Ok(());
     };
 
     // Only check `is` and `is_not` operators for entity-link issues.

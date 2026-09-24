@@ -665,9 +665,8 @@ impl RestTransport {
         config: &ConnectionSettings,
         debug: bool,
     ) -> Result<Option<AccessTokenPayload>> {
-        let refresh_token = match self.cached_refresh_token(config)? {
-            Some(rt) => rt,
-            None => return Ok(None),
+        let Some(refresh_token) = self.cached_refresh_token(config)? else {
+            return Ok(None);
         };
 
         let url = self.build_url(config, "auth/access_token", &[])?;

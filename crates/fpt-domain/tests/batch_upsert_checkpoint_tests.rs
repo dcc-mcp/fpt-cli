@@ -899,8 +899,7 @@ async fn upsert_with_on_conflict_update_and_checkpoint() {
 
     // Verify checkpoint file
     let content = std::fs::read_to_string(&checkpoint_path).expect("read checkpoint");
-    let lines: Vec<&str> = content.lines().collect();
-    assert_eq!(lines.len(), 2);
+    assert_eq!(content.lines().count(), 2);
 
     // Verify transport calls
     assert_eq!(transport.create_count(), 1);
