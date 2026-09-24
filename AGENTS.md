@@ -74,6 +74,22 @@ When extending this project, optimize for the following:
 - **Operational efficiency**: prefer designs that reduce redundant auth or repeated protocol overhead.
 - **OpenClaw compatibility**: new functionality should be convenient for agent orchestration, not only for interactive human usage.
 
+## Review diff fingerprint
+
+A review approval is bound to a **diff fingerprint**, so a rebase that does not change the diff must not invalidate it.
+There is exactly one formula for that value — using any other command produces a different hash for identical content and makes stored approvals unverifiable:
+
+```bash
+gh api "repos/$(gh repo view --json nameWithOwner --jq .nameWithOwner)/compare/<base>...<head>" \
+  -q '.files[] | .filename + "\t" + (.patch // "")' | LC_ALL=C sort | sha256sum
+```
+
+- `<base>` and `<head>` are full SHAs; `<base>` is the PR base (equivalently the merge-base).
+- The three-dot `...` form is required. `git diff <base> <head> | sha256sum` hashes raw git diff text (including the `diff --git`, `index`, `---`/`+++` header lines the API `.patch` omits) and yields a **different** value for the same content. Do not use it.
+- Renames and `Cargo.lock` are included; nothing is filtered or excluded.
+- `LC_ALL=C sort` fixes the file order, because the API does not guarantee one.
+- If the compare API omits `.patch` for a file (very large diffs), say so explicitly instead of falling back to another formula.
+
 ## Testing expectations
 
 - Add or update tests whenever ShotGrid/FPT-facing behavior changes.

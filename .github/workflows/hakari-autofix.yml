@@ -16,6 +16,11 @@ name: Hakari Autofix
 # A push made with GITHUB_TOKEN does not start a new workflow run, so it would
 # move the PR head to a commit no CI run ever validates. Without the token this
 # job only reports the drift and leaves the branch untouched.
+#
+# The PAT is only ever exposed to the push command. Checkout runs with
+# `persist-credentials: false`, so nothing is written to `.git/config` where a
+# later step could read it: the steps after checkout execute the `justfile` of
+# the checked out ref, which is exactly the code that must not see the token.
 
 on:
   pull_request:
@@ -51,10 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # In-repo bot branches only: never check out fork code with a write token.
+    # `user.login` is the PR author, so the job still runs when someone else
+    # pushes to a bot branch. `github.actor` would then be that pusher.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.head.repo.fork == false &&
-       contains(fromJSON('["dependabot[bot]", "renovate[bot]"]'), github.actor))
+       contains(fromJSON('["dependabot[bot]", "renovate[bot]"]'),
+                github.event.pull_request.user.login))
     permissions:
       contents: write
     steps:
@@ -62,9 +70,9 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.event.pull_request.head.ref }}
-          # Falls back to the read-only GITHUB_TOKEN when no PAT is configured:
-          # enough to inspect the branch, and the push step is gated on the PAT.
-          token: ${{ secrets.HAKARI_AUTOFIX_TOKEN || github.token }}
+          # Do not leave the token in .git/config: the steps below run the
+          # `justfile` of this ref. The PAT is passed to `git push` only.
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Setup vx
@@ -103,6 +111,7 @@ jobs:
         if: steps.drift.outputs.drift == 'true' && steps.creds.outputs.can_push == 'true'
         env:
           TARGET_REF: ${{ github.event.pull_request.head.ref || inputs.ref }}
+          HAKARI_AUTOFIX_TOKEN: ${{ secrets.HAKARI_AUTOFIX_TOKEN }}
         run: |
           set -u
 
@@ -127,7 +136,9 @@ jobs:
 
           # Pushing with the PAT starts a new CI run on the pushed commit, so the
           # new head is validated. The GITHUB_TOKEN fallback never reaches here.
-          if git push origin "HEAD:refs/heads/${TARGET_REF}"; then
+          # The credential goes to this one command, not into .git/config.
+          if git -c "http.extraheader=AUTHORIZATION: bearer ${HAKARI_AUTOFIX_TOKEN}" \
+              push origin "HEAD:refs/heads/${TARGET_REF}"; then
             {
               echo "Regenerated \`workspace-hack\` and pushed to \`${TARGET_REF}\`."
               echo ""
