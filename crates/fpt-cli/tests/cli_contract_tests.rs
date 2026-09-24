@@ -465,3 +465,92 @@ fn inspect_license_get_command() {
         .success()
         .stdout(predicate::str::contains("\"license.get\""));
 }
+
+#[test]
+fn capabilities_outputs_webhook_commands_contract() {
+    let mut command = Command::cargo_bin("fpt").expect("binary exists");
+    command.args(["capabilities", "--output", "json"]);
+
+    command
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"webhook.hooks-list\""))
+        .stdout(predicate::str::contains("\"webhook.delivery-redeliver\""));
+}
+
+#[test]
+fn capabilities_outputs_subscription_commands_contract() {
+    let mut command = Command::cargo_bin("fpt").expect("binary exists");
+    command.args(["capabilities", "--output", "json"]);
+
+    command
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"subscription.user-list\""))
+        .stdout(predicate::str::contains("\"subscription.user-assign\""));
+}
+
+#[test]
+fn inspect_webhook_hook_delete_command() {
+    let mut command = Command::cargo_bin("fpt").expect("binary exists");
+    command.args([
+        "inspect",
+        "command",
+        "webhook.hook-delete",
+        "--output",
+        "json",
+    ]);
+
+    command
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("\"webhook.hook-delete\"").and(predicate::str::contains(
+                "Deletes a webhook via DELETE /api/",
+            )),
+        );
+}
+
+#[test]
+fn inspect_subscription_user_assign_command() {
+    let mut command = Command::cargo_bin("fpt").expect("binary exists");
+    command.args([
+        "inspect",
+        "command",
+        "subscription.user-assign",
+        "--output",
+        "json",
+    ]);
+
+    command
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"subscription.user-assign\""));
+}
+
+#[test]
+fn webhook_help_lists_the_new_subcommands() {
+    let mut command = Command::cargo_bin("fpt").expect("binary exists");
+    command.args(["webhook", "--help"]);
+
+    command
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hooks-list"))
+        .stdout(predicate::str::contains("delivery-redeliver"));
+}
+
+#[test]
+fn webhook_hook_read_rejects_empty_hook_id() {
+    let mut command = Command::cargo_bin("fpt").expect("binary exists");
+    command.env("FPT_SITE", "https://example.shotgrid.autodesk.com");
+    command.env("FPT_AUTH_MODE", "script");
+    command.env("FPT_SCRIPT_NAME", "openclaw");
+    command.env("FPT_SCRIPT_KEY", "secret-key");
+    command.args(["webhook", "hook-read", "   ", "--output", "json"]);
+
+    command
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("INVALID_INPUT"));
+}

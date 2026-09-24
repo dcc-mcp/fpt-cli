@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use fpt_core::{AppError, Result};
 use fpt_domain::app::batch::OnConflict;
+use fpt_domain::config::ConnectionSettings;
 use fpt_domain::transport::{FindParams, ShotgridTransport, UploadUrlRequest};
 use fpt_domain::{App, AuthMode, ConnectionOverrides};
 
@@ -628,6 +629,101 @@ impl ShotgridTransport for UpsertTransport {
         _body: &Value,
     ) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
+    }
+
+    async fn webhook_hooks_list(
+        &self,
+        _config: &ConnectionSettings,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hooks_list"))
+    }
+
+    async fn webhook_hook_create(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_create"))
+    }
+
+    async fn webhook_hook_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_read"))
+    }
+
+    async fn webhook_hook_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_update"))
+    }
+
+    async fn webhook_hook_delete(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_delete"))
+    }
+
+    async fn webhook_hook_test_connection(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_test_connection"))
+    }
+
+    async fn webhook_deliveries_list(
+        &self,
+        _config: &ConnectionSettings,
+        _hook_id: &str,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_deliveries_list"))
+    }
+
+    async fn webhook_delivery_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_read"))
+    }
+
+    async fn webhook_delivery_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_update"))
+    }
+
+    async fn webhook_delivery_redeliver(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_redeliver"))
+    }
+
+    async fn subscription_user_list(&self, _config: &ConnectionSettings) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_list"))
+    }
+
+    async fn subscription_user_assign(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_assign"))
     }
 }
 

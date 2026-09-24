@@ -1976,7 +1976,7 @@ async fn hierarchy_expand_uses_expected_post_path() {
     let auth = mock_auth(&server);
     let hierarchy_expand = server.mock(|when, then| {
         when.method(POST)
-            .path("/api/v1.1/hierarchy/expand")
+            .path("/api/v1.1/hierarchy/_expand")
             .header("authorization", "Bearer token-123");
         then.status(200)
             .header("content-type", "application/json")
@@ -2413,4 +2413,334 @@ async fn entity_batch_server_uses_expected_post_path() {
     assert_eq!(batch.calls(), 1);
     assert_eq!(response["data"][0]["type"], "Shot");
     assert_eq!(response["data"][0]["id"], 999);
+}
+
+// ---------------------------------------------------------------
+// Webhooks
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn webhook_hooks_list_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let hooks = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/webhook/hooks")
+            .query_param("status", "active")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": [{"id": "hook-uuid"}]}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_hooks_list(&config, &[("status".to_string(), "active".to_string())])
+        .await
+        .expect("webhook_hooks_list succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(hooks.calls(), 1);
+    assert_eq!(response["data"][0]["id"], "hook-uuid");
+}
+
+#[tokio::test]
+async fn webhook_hook_create_posts_to_hooks_collection() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let create = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/webhook/hooks")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({
+                "event_type": "shotgrid.entity.Shot.change",
+                "url": "https://example.com/hook"
+            }));
+        then.status(201)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "new-hook"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+    let body = json!({
+        "event_type": "shotgrid.entity.Shot.change",
+        "url": "https://example.com/hook"
+    });
+
+    let response = transport
+        .webhook_hook_create(&config, &body)
+        .await
+        .expect("webhook_hook_create succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(create.calls(), 1);
+    assert_eq!(response["data"]["id"], "new-hook");
+}
+
+#[tokio::test]
+async fn webhook_hook_read_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let hook = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "9f1c-hook"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_hook_read(&config, "9f1c-hook")
+        .await
+        .expect("webhook_hook_read succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(hook.calls(), 1);
+    assert_eq!(response["data"]["id"], "9f1c-hook");
+}
+
+#[tokio::test]
+async fn webhook_hook_update_uses_expected_put_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let update = server.mock(|when, then| {
+        when.method(PUT)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({"url": "https://example.com/updated"}));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "9f1c-hook"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_hook_update(
+            &config,
+            "9f1c-hook",
+            &json!({"url": "https://example.com/updated"}),
+        )
+        .await
+        .expect("webhook_hook_update succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(update.calls(), 1);
+    assert!(response.get("data").is_some());
+}
+
+#[tokio::test]
+async fn webhook_hook_delete_uses_expected_delete_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let delete = server.mock(|when, then| {
+        when.method(DELETE)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook")
+            .header("authorization", "Bearer token-123");
+        then.status(204);
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    transport
+        .webhook_hook_delete(&config, "9f1c-hook")
+        .await
+        .expect("webhook_hook_delete succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(delete.calls(), 1);
+}
+
+#[tokio::test]
+async fn webhook_hook_test_connection_posts_to_test_connection_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let test = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook/test_connection")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"status": "ok"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_hook_test_connection(&config, "9f1c-hook")
+        .await
+        .expect("webhook_hook_test_connection succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(test.calls(), 1);
+    assert_eq!(response["data"]["status"], "ok");
+}
+
+#[tokio::test]
+async fn webhook_deliveries_list_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let deliveries = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook/deliveries")
+            .query_param("status", "failed")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": [{"id": "delivery-1"}]}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_deliveries_list(
+            &config,
+            "9f1c-hook",
+            &[("status".to_string(), "failed".to_string())],
+        )
+        .await
+        .expect("webhook_deliveries_list succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(deliveries.calls(), 1);
+    assert_eq!(response["data"][0]["id"], "delivery-1");
+}
+
+#[tokio::test]
+async fn webhook_delivery_read_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let delivery = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/webhook/deliveries/delivery-1")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "delivery-1", "status": "failed"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_delivery_read(&config, "delivery-1")
+        .await
+        .expect("webhook_delivery_read succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(delivery.calls(), 1);
+    assert_eq!(response["data"]["status"], "failed");
+}
+
+#[tokio::test]
+async fn webhook_delivery_update_uses_expected_put_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let update = server.mock(|when, then| {
+        when.method(PUT)
+            .path("/api/v1.1/webhook/deliveries/delivery-1")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({"acknowledgement": "reviewed"}));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "delivery-1"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_delivery_update(
+            &config,
+            "delivery-1",
+            &json!({"acknowledgement": "reviewed"}),
+        )
+        .await
+        .expect("webhook_delivery_update succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(update.calls(), 1);
+    assert_eq!(response["data"]["id"], "delivery-1");
+}
+
+#[tokio::test]
+async fn webhook_delivery_redeliver_posts_to_redeliver_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let redeliver = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/webhook/deliveries/delivery-1/redeliver")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"status": "pending"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_delivery_redeliver(&config, "delivery-1")
+        .await
+        .expect("webhook_delivery_redeliver succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(redeliver.calls(), 1);
+    assert_eq!(response["data"]["status"], "pending");
+}
+
+// ---------------------------------------------------------------
+// Subscription seats
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn subscription_user_list_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let subscriptions = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/subscription_seat/user_subscriptions")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"1554": "standard"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .subscription_user_list(&config)
+        .await
+        .expect("subscription_user_list succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(subscriptions.calls(), 1);
+    assert_eq!(response["data"]["1554"], "standard");
+}
+
+#[tokio::test]
+async fn subscription_user_assign_posts_expected_body() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let assign = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/subscription_seat/user_subscriptions")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({"1554": "standard", "1588": "trial"}));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"updated": 2}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .subscription_user_assign(&config, &json!({"1554": "standard", "1588": "trial"}))
+        .await
+        .expect("subscription_user_assign succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(assign.calls(), 1);
+    assert_eq!(response["data"]["updated"], 2);
 }

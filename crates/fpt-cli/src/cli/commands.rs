@@ -62,6 +62,10 @@ pub enum Commands {
     Schedule(ScheduleCommands),
     #[command(subcommand)]
     License(LicenseCommands),
+    #[command(subcommand)]
+    Webhook(WebhookCommands),
+    #[command(subcommand)]
+    Subscription(SubscriptionCommands),
     #[command(subcommand, name = "self")]
     SelfCommand(SelfCommands),
     #[command(subcommand)]
@@ -861,6 +865,104 @@ pub enum ScheduleCommands {
 pub enum LicenseCommands {
     #[command(name = "get", about = "Read the ShotGrid site license information")]
     Get,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum WebhookCommands {
+    #[command(
+        name = "hooks-list",
+        about = "List the webhooks registered on the site"
+    )]
+    HooksList {
+        #[arg(
+            long,
+            help = "Optional query parameters as JSON (status, url, page, etc.)"
+        )]
+        input: Option<String>,
+    },
+    #[command(name = "hook-create", about = "Create a new webhook")]
+    HookCreate {
+        #[arg(long)]
+        input: String,
+    },
+    #[command(name = "hook-read", about = "Read a single webhook by record id")]
+    HookRead {
+        #[arg(help = "Webhook record id")]
+        hook_id: String,
+    },
+    #[command(name = "hook-update", about = "Update an existing webhook")]
+    HookUpdate {
+        #[arg(help = "Webhook record id")]
+        hook_id: String,
+        #[arg(long)]
+        input: String,
+    },
+    #[command(name = "hook-delete", about = "Delete a webhook")]
+    HookDelete {
+        #[arg(help = "Webhook record id")]
+        hook_id: String,
+    },
+    #[command(
+        name = "hook-test",
+        about = "Send a test delivery for a webhook to verify its target endpoint"
+    )]
+    HookTest {
+        #[arg(help = "Webhook record id")]
+        hook_id: String,
+    },
+    #[command(
+        name = "deliveries-list",
+        about = "List the deliveries recorded for a webhook"
+    )]
+    DeliveriesList {
+        #[arg(help = "Webhook record id")]
+        hook_id: String,
+        #[arg(
+            long,
+            help = "Optional query parameters as JSON (status, from, to, entity_type, page, etc.)"
+        )]
+        input: Option<String>,
+    },
+    #[command(
+        name = "delivery-read",
+        about = "Read a single webhook delivery by record id"
+    )]
+    DeliveryRead {
+        #[arg(help = "Delivery record id")]
+        delivery_id: String,
+    },
+    #[command(name = "delivery-update", about = "Update a webhook delivery")]
+    DeliveryUpdate {
+        #[arg(help = "Delivery record id")]
+        delivery_id: String,
+        #[arg(long)]
+        input: String,
+    },
+    #[command(
+        name = "delivery-redeliver",
+        about = "Re-deliver a failed webhook delivery"
+    )]
+    DeliveryRedeliver {
+        #[arg(help = "Delivery record id")]
+        delivery_id: String,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SubscriptionCommands {
+    #[command(
+        name = "user-list",
+        about = "Read the subscription assigned to every user on the site"
+    )]
+    UserList,
+    #[command(name = "user-assign", about = "Assign subscription seats to users")]
+    UserAssign {
+        #[arg(
+            long,
+            help = "JSON object mapping user ids to subscription names, e.g. '{\"1554\":\"standard\"}'"
+        )]
+        input: String,
+    },
 }
 
 /// How to handle a conflict when an entity with the key field value already exists.

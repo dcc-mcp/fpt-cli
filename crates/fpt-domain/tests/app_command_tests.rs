@@ -41,6 +41,19 @@ struct RecordedState {
     entity_delete_calls: Vec<(String, u64)>,
     entity_revive_calls: Vec<(String, u64)>,
     work_schedule_calls: Vec<Value>,
+
+    webhook_hooks_list_params: Vec<Vec<(String, String)>>,
+    webhook_hook_create_bodies: Vec<Value>,
+    webhook_hook_read_ids: Vec<String>,
+    webhook_hook_update_calls: Vec<(String, Value)>,
+    webhook_hook_delete_ids: Vec<String>,
+    webhook_hook_test_ids: Vec<String>,
+    webhook_deliveries_list_calls: Vec<(String, Vec<(String, String)>)>,
+    webhook_delivery_read_ids: Vec<String>,
+    webhook_delivery_update_calls: Vec<(String, Value)>,
+    webhook_delivery_redeliver_ids: Vec<String>,
+    subscription_user_list_calls: usize,
+    subscription_user_assign_bodies: Vec<Value>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -657,6 +670,160 @@ impl ShotgridTransport for RecordingTransport {
     ) -> Result<Value> {
         Ok(json!({}))
     }
+
+    async fn webhook_hooks_list(
+        &self,
+        _config: &ConnectionSettings,
+        params: &[(String, String)],
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_hooks_list_params
+            .push(params.to_vec());
+        Ok(json!({"data": [{"id": "hook-uuid"}]}))
+    }
+
+    async fn webhook_hook_create(
+        &self,
+        _config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_hook_create_bodies
+            .push(body.clone());
+        Ok(json!({"data": {"id": "new-hook"}}))
+    }
+
+    async fn webhook_hook_read(
+        &self,
+        _config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_hook_read_ids
+            .push(record_uuid.to_string());
+        Ok(json!({"data": {"id": record_uuid}}))
+    }
+
+    async fn webhook_hook_update(
+        &self,
+        _config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_hook_update_calls
+            .push((record_uuid.to_string(), body.clone()));
+        Ok(json!({"data": {"id": record_uuid}}))
+    }
+
+    async fn webhook_hook_delete(
+        &self,
+        _config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_hook_delete_ids
+            .push(record_uuid.to_string());
+        Ok(json!({"data": {"id": record_uuid, "deleted": true}}))
+    }
+
+    async fn webhook_hook_test_connection(
+        &self,
+        _config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_hook_test_ids
+            .push(record_uuid.to_string());
+        Ok(json!({"data": {"status": "ok"}}))
+    }
+
+    async fn webhook_deliveries_list(
+        &self,
+        _config: &ConnectionSettings,
+        hook_id: &str,
+        params: &[(String, String)],
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_deliveries_list_calls
+            .push((hook_id.to_string(), params.to_vec()));
+        Ok(json!({"data": [{"id": "delivery-1"}]}))
+    }
+
+    async fn webhook_delivery_read(
+        &self,
+        _config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_delivery_read_ids
+            .push(record_uuid.to_string());
+        Ok(json!({"data": {"id": record_uuid, "status": "failed"}}))
+    }
+
+    async fn webhook_delivery_update(
+        &self,
+        _config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_delivery_update_calls
+            .push((record_uuid.to_string(), body.clone()));
+        Ok(json!({"data": {"id": record_uuid}}))
+    }
+
+    async fn webhook_delivery_redeliver(
+        &self,
+        _config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .webhook_delivery_redeliver_ids
+            .push(record_uuid.to_string());
+        Ok(json!({"data": {"id": record_uuid, "status": "pending"}}))
+    }
+
+    async fn subscription_user_list(&self, _config: &ConnectionSettings) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .subscription_user_list_calls += 1;
+        Ok(json!({"data": {"1554": "standard"}}))
+    }
+
+    async fn subscription_user_assign(
+        &self,
+        _config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value> {
+        self.state
+            .lock()
+            .expect("state lock")
+            .subscription_user_assign_bodies
+            .push(body.clone());
+        Ok(json!({"data": {"updated": 1}}))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1175,6 +1342,101 @@ impl ShotgridTransport for FindOneTransport {
     ) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
     }
+
+    async fn webhook_hooks_list(
+        &self,
+        _config: &ConnectionSettings,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hooks_list"))
+    }
+
+    async fn webhook_hook_create(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_create"))
+    }
+
+    async fn webhook_hook_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_read"))
+    }
+
+    async fn webhook_hook_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_update"))
+    }
+
+    async fn webhook_hook_delete(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_delete"))
+    }
+
+    async fn webhook_hook_test_connection(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_test_connection"))
+    }
+
+    async fn webhook_deliveries_list(
+        &self,
+        _config: &ConnectionSettings,
+        _hook_id: &str,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_deliveries_list"))
+    }
+
+    async fn webhook_delivery_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_read"))
+    }
+
+    async fn webhook_delivery_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_update"))
+    }
+
+    async fn webhook_delivery_redeliver(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_redeliver"))
+    }
+
+    async fn subscription_user_list(&self, _config: &ConnectionSettings) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_list"))
+    }
+
+    async fn subscription_user_assign(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_assign"))
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1684,6 +1946,101 @@ impl ShotgridTransport for NoteThreadsNotFoundTransport {
         _body: &Value,
     ) -> Result<Value> {
         Ok(json!({}))
+    }
+
+    async fn webhook_hooks_list(
+        &self,
+        _config: &ConnectionSettings,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hooks_list"))
+    }
+
+    async fn webhook_hook_create(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_create"))
+    }
+
+    async fn webhook_hook_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_read"))
+    }
+
+    async fn webhook_hook_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_update"))
+    }
+
+    async fn webhook_hook_delete(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_delete"))
+    }
+
+    async fn webhook_hook_test_connection(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_test_connection"))
+    }
+
+    async fn webhook_deliveries_list(
+        &self,
+        _config: &ConnectionSettings,
+        _hook_id: &str,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_deliveries_list"))
+    }
+
+    async fn webhook_delivery_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_read"))
+    }
+
+    async fn webhook_delivery_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_update"))
+    }
+
+    async fn webhook_delivery_redeliver(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_redeliver"))
+    }
+
+    async fn subscription_user_list(&self, _config: &ConnectionSettings) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_list"))
+    }
+
+    async fn subscription_user_assign(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_assign"))
     }
 }
 
@@ -2206,6 +2563,101 @@ impl ShotgridTransport for SlowGetTransport {
         _body: &Value,
     ) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
+    }
+
+    async fn webhook_hooks_list(
+        &self,
+        _config: &ConnectionSettings,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hooks_list"))
+    }
+
+    async fn webhook_hook_create(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_create"))
+    }
+
+    async fn webhook_hook_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_read"))
+    }
+
+    async fn webhook_hook_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_update"))
+    }
+
+    async fn webhook_hook_delete(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_delete"))
+    }
+
+    async fn webhook_hook_test_connection(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_test_connection"))
+    }
+
+    async fn webhook_deliveries_list(
+        &self,
+        _config: &ConnectionSettings,
+        _hook_id: &str,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_deliveries_list"))
+    }
+
+    async fn webhook_delivery_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_read"))
+    }
+
+    async fn webhook_delivery_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_update"))
+    }
+
+    async fn webhook_delivery_redeliver(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_redeliver"))
+    }
+
+    async fn subscription_user_list(&self, _config: &ConnectionSettings) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_list"))
+    }
+
+    async fn subscription_user_assign(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_assign"))
     }
 }
 
@@ -4378,4 +4830,309 @@ async fn capabilities_includes_new_api_specs() {
         names.contains(&"preferences.custom-entity"),
         "should include preferences.custom-entity"
     );
+    assert!(
+        names.contains(&"webhook.hooks-list"),
+        "should include webhook.hooks-list"
+    );
+    assert!(
+        names.contains(&"webhook.delivery-redeliver"),
+        "should include webhook.delivery-redeliver"
+    );
+    assert!(
+        names.contains(&"subscription.user-list"),
+        "should include subscription.user-list"
+    );
+    assert!(
+        names.contains(&"subscription.user-assign"),
+        "should include subscription.user-assign"
+    );
+}
+
+// ---------------------------------------------------------------
+// Webhook commands
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn webhook_hooks_list_converts_input_into_query_params() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    app.webhook_hooks_list(
+        overrides(),
+        Some(json!({"status": "active", "page": {"number": 2, "size": 25}})),
+    )
+    .await
+    .expect("webhook_hooks_list succeeds");
+
+    let state = transport.snapshot();
+    assert_eq!(state.webhook_hooks_list_params.len(), 1);
+    let params = &state.webhook_hooks_list_params[0];
+    assert!(params.contains(&("status".to_string(), "active".to_string())));
+    assert!(params.contains(&("page[number]".to_string(), "2".to_string())));
+    assert!(params.contains(&("page[size]".to_string(), "25".to_string())));
+}
+
+#[tokio::test]
+async fn webhook_hook_create_delegates_body_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+    let body = json!({
+        "event_type": "shotgrid.entity.Shot.change",
+        "url": "https://example.com/hook"
+    });
+
+    app.webhook_hook_create(overrides(), body.clone())
+        .await
+        .expect("webhook_hook_create succeeds");
+
+    assert_eq!(transport.snapshot().webhook_hook_create_bodies, vec![body]);
+}
+
+#[tokio::test]
+async fn webhook_hook_create_rejects_non_object_body() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    let error = app
+        .webhook_hook_create(overrides(), json!("not-an-object"))
+        .await
+        .expect_err("non-object body is rejected");
+
+    assert_eq!(error.envelope().code, "INVALID_INPUT");
+    assert!(transport.snapshot().webhook_hook_create_bodies.is_empty());
+}
+
+#[tokio::test]
+async fn webhook_hook_read_delegates_trimmed_id_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    app.webhook_hook_read(overrides(), "  hook-uuid  ")
+        .await
+        .expect("webhook_hook_read succeeds");
+
+    assert_eq!(
+        transport.snapshot().webhook_hook_read_ids,
+        vec!["hook-uuid"]
+    );
+}
+
+#[tokio::test]
+async fn webhook_hook_read_rejects_empty_id() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport);
+
+    let error = app
+        .webhook_hook_read(overrides(), "   ")
+        .await
+        .expect_err("empty hook id is rejected");
+
+    assert_eq!(error.envelope().code, "INVALID_INPUT");
+}
+
+#[tokio::test]
+async fn webhook_hook_update_delegates_id_and_body_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+    let body = json!({"url": "https://example.com/updated"});
+
+    app.webhook_hook_update(overrides(), "hook-uuid", body.clone())
+        .await
+        .expect("webhook_hook_update succeeds");
+
+    assert_eq!(
+        transport.snapshot().webhook_hook_update_calls,
+        vec![("hook-uuid".to_string(), body)]
+    );
+}
+
+#[tokio::test]
+async fn webhook_hook_delete_delegates_id_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    app.webhook_hook_delete(overrides(), "hook-uuid")
+        .await
+        .expect("webhook_hook_delete succeeds");
+
+    assert_eq!(
+        transport.snapshot().webhook_hook_delete_ids,
+        vec!["hook-uuid".to_string()]
+    );
+}
+
+#[tokio::test]
+async fn webhook_hook_test_connection_delegates_id_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    app.webhook_hook_test_connection(overrides(), "hook-uuid")
+        .await
+        .expect("webhook_hook_test_connection succeeds");
+
+    assert_eq!(
+        transport.snapshot().webhook_hook_test_ids,
+        vec!["hook-uuid".to_string()]
+    );
+}
+
+#[tokio::test]
+async fn webhook_deliveries_list_delegates_hook_id_and_params() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    app.webhook_deliveries_list(overrides(), "hook-uuid", Some(json!({"status": "failed"})))
+        .await
+        .expect("webhook_deliveries_list succeeds");
+
+    let state = transport.snapshot();
+    assert_eq!(state.webhook_deliveries_list_calls.len(), 1);
+    let (hook_id, params) = &state.webhook_deliveries_list_calls[0];
+    assert_eq!(hook_id, "hook-uuid");
+    assert!(params.contains(&("status".to_string(), "failed".to_string())));
+}
+
+#[tokio::test]
+async fn webhook_delivery_read_delegates_id_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    app.webhook_delivery_read(overrides(), "delivery-1")
+        .await
+        .expect("webhook_delivery_read succeeds");
+
+    assert_eq!(
+        transport.snapshot().webhook_delivery_read_ids,
+        vec!["delivery-1".to_string()]
+    );
+}
+
+#[tokio::test]
+async fn webhook_delivery_update_delegates_id_and_body_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+    let body = json!({"acknowledgement": "reviewed"});
+
+    app.webhook_delivery_update(overrides(), "delivery-1", body.clone())
+        .await
+        .expect("webhook_delivery_update succeeds");
+
+    assert_eq!(
+        transport.snapshot().webhook_delivery_update_calls,
+        vec![("delivery-1".to_string(), body)]
+    );
+}
+
+#[tokio::test]
+async fn webhook_delivery_update_rejects_empty_delivery_id() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport);
+
+    let error = app
+        .webhook_delivery_update(overrides(), "", json!({"acknowledgement": "reviewed"}))
+        .await
+        .expect_err("empty delivery id is rejected");
+
+    assert_eq!(error.envelope().code, "INVALID_INPUT");
+}
+
+#[tokio::test]
+async fn webhook_delivery_redeliver_delegates_id_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    app.webhook_delivery_redeliver(overrides(), "delivery-1")
+        .await
+        .expect("webhook_delivery_redeliver succeeds");
+
+    assert_eq!(
+        transport.snapshot().webhook_delivery_redeliver_ids,
+        vec!["delivery-1".to_string()]
+    );
+}
+
+// ---------------------------------------------------------------
+// Subscription seat commands
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn subscription_user_list_delegates_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+
+    let response = app
+        .subscription_user_list(overrides())
+        .await
+        .expect("subscription_user_list succeeds");
+
+    assert_eq!(transport.snapshot().subscription_user_list_calls, 1);
+    assert_eq!(response["data"]["1554"], "standard");
+}
+
+#[tokio::test]
+async fn subscription_user_assign_delegates_body_to_transport() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport.clone());
+    let body = json!({"1554": "standard", "1588": "trial"});
+
+    app.subscription_user_assign(overrides(), body.clone())
+        .await
+        .expect("subscription_user_assign succeeds");
+
+    assert_eq!(
+        transport.snapshot().subscription_user_assign_bodies,
+        vec![body]
+    );
+}
+
+#[tokio::test]
+async fn subscription_user_assign_rejects_array_body() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport);
+
+    let error = app
+        .subscription_user_assign(overrides(), json!([{"1554": "standard"}]))
+        .await
+        .expect_err("array body is rejected");
+
+    assert_eq!(error.envelope().code, "INVALID_INPUT");
+}
+
+#[tokio::test]
+async fn subscription_user_assign_rejects_empty_body() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport);
+
+    let error = app
+        .subscription_user_assign(overrides(), json!({}))
+        .await
+        .expect_err("empty body is rejected");
+
+    assert_eq!(error.envelope().code, "INVALID_INPUT");
+}
+
+#[tokio::test]
+async fn subscription_user_assign_rejects_non_numeric_user_id() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport);
+
+    let error = app
+        .subscription_user_assign(overrides(), json!({"user-1554": "standard"}))
+        .await
+        .expect_err("non-numeric user id is rejected");
+
+    assert_eq!(error.envelope().code, "INVALID_INPUT");
+}
+
+#[tokio::test]
+async fn subscription_user_assign_rejects_non_string_subscription() {
+    let transport = RecordingTransport::default();
+    let app = App::new(transport);
+
+    let error = app
+        .subscription_user_assign(overrides(), json!({"1554": 42}))
+        .await
+        .expect_err("non-string subscription is rejected");
+
+    assert_eq!(error.envelope().code, "INVALID_INPUT");
 }
