@@ -11,8 +11,10 @@ mod schedule;
 mod schema;
 mod self_update;
 mod server;
+mod subscription;
 mod upload;
 mod user;
+mod webhook;
 mod work_schedule;
 
 use fpt_core::CommandSpec;
@@ -113,6 +115,20 @@ static COMMANDS: &[CommandSpec] = &[
     preferences::PREFERENCES_GET_SPEC,
     preferences::PREFERENCES_UPDATE_SPEC,
     preferences::PREFERENCES_CUSTOM_ENTITY_SPEC,
+    // Webhook
+    webhook::WEBHOOK_HOOKS_LIST_SPEC,
+    webhook::WEBHOOK_HOOK_CREATE_SPEC,
+    webhook::WEBHOOK_HOOK_READ_SPEC,
+    webhook::WEBHOOK_HOOK_UPDATE_SPEC,
+    webhook::WEBHOOK_HOOK_DELETE_SPEC,
+    webhook::WEBHOOK_HOOK_TEST_SPEC,
+    webhook::WEBHOOK_DELIVERIES_LIST_SPEC,
+    webhook::WEBHOOK_DELIVERY_READ_SPEC,
+    webhook::WEBHOOK_DELIVERY_UPDATE_SPEC,
+    webhook::WEBHOOK_DELIVERY_REDELIVER_SPEC,
+    // Subscription seats
+    subscription::SUBSCRIPTION_USER_LIST_SPEC,
+    subscription::SUBSCRIPTION_USER_ASSIGN_SPEC,
     // Self-update & config
     self_update::SELF_UPDATE_SPEC,
     self_update::CONFIG_GET_SPEC,

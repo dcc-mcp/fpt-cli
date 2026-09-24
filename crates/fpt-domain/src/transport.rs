@@ -433,6 +433,93 @@ pub trait ShotgridTransport {
     /// succeed or fail together — the server rolls back if any request fails.
     async fn entity_batch_server(&self, config: &ConnectionSettings, body: &Value)
     -> Result<Value>;
+
+    /// List the webhooks registered on the site via `GET /api/{ver}/webhook/hooks`.
+    ///
+    /// Supports optional `status`, `url`, and pagination query parameters.
+    async fn webhook_hooks_list(
+        &self,
+        config: &ConnectionSettings,
+        params: &[(String, String)],
+    ) -> Result<Value>;
+
+    /// Register a new webhook via `POST /api/{ver}/webhook/hooks`.
+    async fn webhook_hook_create(&self, config: &ConnectionSettings, body: &Value)
+    -> Result<Value>;
+
+    /// Read a single webhook by id via `GET /api/{ver}/webhook/hooks/{record_uuid}`.
+    async fn webhook_hook_read(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// Update an existing webhook via `PUT /api/{ver}/webhook/hooks/{record_uuid}`.
+    async fn webhook_hook_update(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value>;
+
+    /// Delete a webhook via `DELETE /api/{ver}/webhook/hooks/{record_uuid}`.
+    async fn webhook_hook_delete(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// Trigger a test delivery via
+    /// `POST /api/{ver}/webhook/hooks/{record_uuid}/test_connection`.
+    async fn webhook_hook_test_connection(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// List deliveries for a webhook via
+    /// `GET /api/{ver}/webhook/hooks/{hook_id}/deliveries`.
+    async fn webhook_deliveries_list(
+        &self,
+        config: &ConnectionSettings,
+        hook_id: &str,
+        params: &[(String, String)],
+    ) -> Result<Value>;
+
+    /// Read a single delivery via `GET /api/{ver}/webhook/deliveries/{record_uuid}`.
+    async fn webhook_delivery_read(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// Update a delivery via `PUT /api/{ver}/webhook/deliveries/{record_uuid}`.
+    async fn webhook_delivery_update(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value>;
+
+    /// Re-deliver a failed delivery via
+    /// `POST /api/{ver}/webhook/deliveries/{record_uuid}/redeliver`.
+    async fn webhook_delivery_redeliver(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// Read all user subscriptions via
+    /// `GET /api/{ver}/subscription_seat/user_subscriptions`.
+    async fn subscription_user_list(&self, config: &ConnectionSettings) -> Result<Value>;
+
+    /// Assign subscriptions to users via
+    /// `POST /api/{ver}/subscription_seat/user_subscriptions`.
+    async fn subscription_user_assign(
+        &self,
+        config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value>;
 }
 
 #[derive(Debug, Clone)]
@@ -1681,7 +1768,7 @@ impl ShotgridTransport for RestTransport {
     }
 
     async fn hierarchy_expand(&self, config: &ConnectionSettings, body: &Value) -> Result<Value> {
-        self.authorized_json_request(config, Method::POST, "hierarchy/expand", &[], Some(body))
+        self.authorized_json_request(config, Method::POST, "hierarchy/_expand", &[], Some(body))
             .await
     }
 
@@ -1874,6 +1961,133 @@ impl ShotgridTransport for RestTransport {
     ) -> Result<Value> {
         self.authorized_json_request(config, Method::POST, "entity/_batch", &[], Some(body))
             .await
+    }
+
+    async fn webhook_hooks_list(
+        &self,
+        config: &ConnectionSettings,
+        params: &[(String, String)],
+    ) -> Result<Value> {
+        self.authorized_json_request(config, Method::GET, "webhook/hooks", params, None)
+            .await
+    }
+
+    async fn webhook_hook_create(
+        &self,
+        config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value> {
+        self.authorized_json_request(config, Method::POST, "webhook/hooks", &[], Some(body))
+            .await
+    }
+
+    async fn webhook_hook_read(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{record_uuid}");
+        self.authorized_json_request(config, Method::GET, &path, &[], None)
+            .await
+    }
+
+    async fn webhook_hook_update(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{record_uuid}");
+        self.authorized_json_request(config, Method::PUT, &path, &[], Some(body))
+            .await
+    }
+
+    async fn webhook_hook_delete(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{record_uuid}");
+        self.authorized_json_request(config, Method::DELETE, &path, &[], None)
+            .await
+    }
+
+    async fn webhook_hook_test_connection(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{record_uuid}/test_connection");
+        self.authorized_json_request(config, Method::POST, &path, &[], None)
+            .await
+    }
+
+    async fn webhook_deliveries_list(
+        &self,
+        config: &ConnectionSettings,
+        hook_id: &str,
+        params: &[(String, String)],
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{hook_id}/deliveries");
+        self.authorized_json_request(config, Method::GET, &path, params, None)
+            .await
+    }
+
+    async fn webhook_delivery_read(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/deliveries/{record_uuid}");
+        self.authorized_json_request(config, Method::GET, &path, &[], None)
+            .await
+    }
+
+    async fn webhook_delivery_update(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        let path = format!("webhook/deliveries/{record_uuid}");
+        self.authorized_json_request(config, Method::PUT, &path, &[], Some(body))
+            .await
+    }
+
+    async fn webhook_delivery_redeliver(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/deliveries/{record_uuid}/redeliver");
+        self.authorized_json_request(config, Method::POST, &path, &[], None)
+            .await
+    }
+
+    async fn subscription_user_list(&self, config: &ConnectionSettings) -> Result<Value> {
+        self.authorized_json_request(
+            config,
+            Method::GET,
+            "subscription_seat/user_subscriptions",
+            &[],
+            None,
+        )
+        .await
+    }
+
+    async fn subscription_user_assign(
+        &self,
+        config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value> {
+        self.authorized_json_request(
+            config,
+            Method::POST,
+            "subscription_seat/user_subscriptions",
+            &[],
+            Some(body),
+        )
+        .await
     }
 }
 

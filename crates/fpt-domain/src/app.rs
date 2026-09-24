@@ -11,9 +11,11 @@ mod query_helpers;
 mod schedule;
 mod schema;
 mod server;
+mod subscription;
 mod summarize;
 mod upload;
 mod user;
+mod webhook;
 mod work_schedule;
 
 use std::env;

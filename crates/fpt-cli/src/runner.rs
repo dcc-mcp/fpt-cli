@@ -2,8 +2,8 @@ use crate::cli::{
     ActivityCommands, AuthCommands, BatchEntityCommands, Cli, Commands, DownloadCommands,
     EntityCommands, EventLogCommands, FilmstripCommands, FollowersCommands, HierarchyCommands,
     InspectCommands, LicenseCommands, NoteCommands, PreferencesCommands, ScheduleCommands,
-    SchemaCommands, SelfCommands, ServerCommands, ThumbnailCommands, UploadCommands, UserCommands,
-    WorkScheduleCommands,
+    SchemaCommands, SelfCommands, ServerCommands, SubscriptionCommands, ThumbnailCommands,
+    UploadCommands, UserCommands, WebhookCommands, WorkScheduleCommands,
 };
 use crate::config;
 use crate::self_update;
@@ -453,6 +453,53 @@ pub async fn run(cli: Cli) -> Result<Value> {
         },
         Commands::License(command) => match command {
             LicenseCommands::Get => app.license(connection).await,
+        },
+        Commands::Webhook(command) => match command {
+            WebhookCommands::HooksList { input } => {
+                let input = read_json_input(input.as_deref())?;
+                app.webhook_hooks_list(connection, input).await
+            }
+            WebhookCommands::HookCreate { input } => {
+                let body = required_json_input(input)?;
+                app.webhook_hook_create(connection, body).await
+            }
+            WebhookCommands::HookRead { hook_id } => {
+                app.webhook_hook_read(connection, &hook_id).await
+            }
+            WebhookCommands::HookUpdate { hook_id, input } => {
+                let body = required_json_input(input)?;
+                app.webhook_hook_update(connection, &hook_id, body).await
+            }
+            WebhookCommands::HookDelete { hook_id } => {
+                app.webhook_hook_delete(connection, &hook_id).await
+            }
+            WebhookCommands::HookTest { hook_id } => {
+                app.webhook_hook_test_connection(connection, &hook_id).await
+            }
+            WebhookCommands::DeliveriesList { hook_id, input } => {
+                let input = read_json_input(input.as_deref())?;
+                app.webhook_deliveries_list(connection, &hook_id, input)
+                    .await
+            }
+            WebhookCommands::DeliveryRead { delivery_id } => {
+                app.webhook_delivery_read(connection, &delivery_id).await
+            }
+            WebhookCommands::DeliveryUpdate { delivery_id, input } => {
+                let body = required_json_input(input)?;
+                app.webhook_delivery_update(connection, &delivery_id, body)
+                    .await
+            }
+            WebhookCommands::DeliveryRedeliver { delivery_id } => {
+                app.webhook_delivery_redeliver(connection, &delivery_id)
+                    .await
+            }
+        },
+        Commands::Subscription(command) => match command {
+            SubscriptionCommands::UserList => app.subscription_user_list(connection).await,
+            SubscriptionCommands::UserAssign { input } => {
+                let body = required_json_input(input)?;
+                app.subscription_user_assign(connection, body).await
+            }
         },
         Commands::SelfCommand(command) => match command {
             SelfCommands::Update(args) => self_update::run(args).await,
