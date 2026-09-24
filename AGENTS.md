@@ -84,7 +84,7 @@ gh api "repos/$(gh repo view --json nameWithOwner --jq .nameWithOwner)/compare/<
   -q '.files[] | .filename + "\t" + (.patch // "")' | LC_ALL=C sort | sha256sum
 ```
 
-- `<base>` and `<head>` are full SHAs; `<base>` is the PR base (equivalently the merge-base).
+- `<base>` and `<head>` are full SHAs. Pass the PR's base SHA as `<base>`: the API resolves `compare/<base>...<head>` with three-dot semantics, i.e. it diffs `merge-base(base, head)` against `head`, so pass the PR base rather than a merge-base you computed yourself.
 - The three-dot `...` form is required. `git diff <base> <head> | sha256sum` hashes raw git diff text (including the `diff --git`, `index`, `---`/`+++` header lines the API `.patch` omits) and yields a **different** value for the same content. Do not use it.
 - Renames and `Cargo.lock` are included; nothing is filtered or excluded.
 - `LC_ALL=C sort` fixes the file order, because the API does not guarantee one.

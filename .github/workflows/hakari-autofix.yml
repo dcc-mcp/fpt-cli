@@ -107,11 +107,11 @@ jobs:
             echo "::warning::workspace-hack is stale."
           fi
 
-      - name: Regenerate, verify and push
+      - name: Regenerate and verify
+        id: regenerate
+        # No token in this step's env: the `just` recipes below come from the
+        # checked out ref, and step-level env reaches every child process.
         if: steps.drift.outputs.drift == 'true' && steps.creds.outputs.can_push == 'true'
-        env:
-          TARGET_REF: ${{ github.event.pull_request.head.ref || inputs.ref }}
-          HAKARI_AUTOFIX_TOKEN: ${{ secrets.HAKARI_AUTOFIX_TOKEN }}
         run: |
           set -u
 
@@ -126,6 +126,7 @@ jobs:
 
           if git diff --quiet -- Cargo.toml Cargo.lock workspace-hack crates; then
             echo "::notice::Regeneration produced no file changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -133,12 +134,21 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- Cargo.toml Cargo.lock workspace-hack crates
           git commit -m "chore(hakari): regenerate workspace-hack"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push regenerated files
+        # This step runs no code from the checked out ref, only git, so it is
+        # the only place the PAT is exposed.
+        if: steps.regenerate.outputs.changed == 'true'
+        env:
+          TARGET_REF: ${{ github.event.pull_request.head.ref || inputs.ref }}
+          HAKARI_AUTOFIX_TOKEN: ${{ secrets.HAKARI_AUTOFIX_TOKEN }}
+        run: |
+          set -u
 
           # Pushing with the PAT starts a new CI run on the pushed commit, so the
           # new head is validated. The GITHUB_TOKEN fallback never reaches here.
-          # The credential goes to this one command, not into .git/config.
-          if git -c "http.extraheader=AUTHORIZATION: bearer ${HAKARI_AUTOFIX_TOKEN}" \
-              push origin "HEAD:refs/heads/${TARGET_REF}"; then
+          if git -c "http.extraheader=AUTHORIZATION: bearer ${HAKARI_AUTOFIX_TOKEN}"               push origin "HEAD:refs/heads/${TARGET_REF}"; then
             {
               echo "Regenerated \`workspace-hack\` and pushed to \`${TARGET_REF}\`."
               echo ""
