@@ -137,10 +137,12 @@ static COMMANDS: &[CommandSpec] = &[
     self_update::CONFIG_CLEAR_SPEC,
 ];
 
+#[must_use]
 pub fn command_specs() -> &'static [CommandSpec] {
     COMMANDS
 }
 
+#[must_use]
 pub fn find_command_spec(name: &str) -> Option<&'static CommandSpec> {
     let normalized = normalize_command_name(name);
     COMMANDS.iter().find(|spec| spec.name == normalized)

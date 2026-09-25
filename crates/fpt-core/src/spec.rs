@@ -6,7 +6,7 @@ use serde::Serialize;
 /// These specs are surfaced through `fpt capabilities` and `fpt inspect command <name>`
 /// so that agents can introspect the command contract without parsing help text.
 /// Each spec is defined as a `const` in the corresponding capability module.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct CommandSpec {
     /// Dot-separated command name (e.g. `"entity.find"`, `"auth.test"`).
     pub name: &'static str,

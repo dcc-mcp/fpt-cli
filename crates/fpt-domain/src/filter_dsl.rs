@@ -29,6 +29,10 @@ enum Expr {
     },
 }
 
+/// Parse a filter DSL expression into a ShotGrid-compatible filter object.
+///
+/// Returns a JSON value containing `logical_operator` and `conditions` suitable
+/// for use in ShotGrid REST `_search` request bodies.
 pub fn parse_filter_dsl(input: &str) -> Result<Value> {
     let source = input.trim();
     if source.is_empty() {
