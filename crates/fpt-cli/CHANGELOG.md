@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.2.26](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.25...v0.2.26) (2026-09-25)
+
+
+### Features
+
+* add schedule.work-day-rules-read endpoint integration ([#135](https://github.com/dcc-mcp/fpt-cli/issues/135)) ([482ce1f](https://github.com/dcc-mcp/fpt-cli/commit/482ce1f90c6d671555d9eaf8f70540443f764315))
+* add secure auth profiles ([76b8e88](https://github.com/dcc-mcp/fpt-cli/commit/76b8e887a7caa01000df0452d06b595eb75c3dea))
+* integrate REST API version and OpenAPI spec endpoints ([#132](https://github.com/dcc-mcp/fpt-cli/issues/132)) ([f1903eb](https://github.com/dcc-mcp/fpt-cli/commit/f1903ebaad6ca3b6719e0d1ad01b9965b3a3ab32))
+* integrate REST-based summarize and server-side batch API endpoints ([#137](https://github.com/dcc-mcp/fpt-cli/issues/137)) ([df323eb](https://github.com/dcc-mcp/fpt-cli/commit/df323eb39f9a1b4b053d29954c6a97f77ee1e3d0))
+* integrate webhook and subscription seat REST API endpoints ([#142](https://github.com/dcc-mcp/fpt-cli/issues/142)) ([1528f50](https://github.com/dcc-mcp/fpt-cli/commit/1528f50fa9e5bab19359524c3be4cc199923890b))
+* migrate entity revive to REST and add token refresh support ([#139](https://github.com/dcc-mcp/fpt-cli/issues/139)) ([4511624](https://github.com/dcc-mcp/fpt-cli/commit/451162415ef838a7c6cb751d9e8579fa9e24bac0))
+
+
+### Bug Fixes
+
+* vendor secure profile backend ([cb60334](https://github.com/dcc-mcp/fpt-cli/commit/cb60334b0a10e7a0639affeef928e633bf82ea28))
+
+
+### Miscellaneous Chores
+
+* add #[must_use] annotations and improve type ergonomics ([#133](https://github.com/dcc-mcp/fpt-cli/issues/133)) ([f6303dd](https://github.com/dcc-mcp/fpt-cli/commit/f6303dd9ecde1565934bf0c13f823c8c0e05ab8b))
+* apply clippy pedantic and nursery lint fixes ([#134](https://github.com/dcc-mcp/fpt-cli/issues/134)) ([e7507b4](https://github.com/dcc-mcp/fpt-cli/commit/e7507b4076c257b3430b7a1bed70f9cc163131c9))
+* code cleanup — complete batch refactor, idiomatic let-else/if-let patterns ([1466cc6](https://github.com/dcc-mcp/fpt-cli/commit/1466cc6ff7e279bde6d9f309f71070d9adbbd0ef))
+* code cleanup — fix incomplete batch refactor, use idiomatic let-else/if-let patterns ([5a0de6c](https://github.com/dcc-mcp/fpt-cli/commit/5a0de6cb8ac4fb366f74bacbdd1c893403ac8a0d))
+* **deps:** update rust crate hyper to v1.9.0 ([#113](https://github.com/dcc-mcp/fpt-cli/issues/113)) ([5e2d339](https://github.com/dcc-mcp/fpt-cli/commit/5e2d339455ce4cebad2c5bf707627b5d17fa9273))
+* **deps:** update rust crate semver to v1.0.28 ([#121](https://github.com/dcc-mcp/fpt-cli/issues/121)) ([98e9ff0](https://github.com/dcc-mcp/fpt-cli/commit/98e9ff04040617d68230c063ad15e8218cfae02a))
+* fix clippy pedantic lint warnings and improve doc formatting ([#138](https://github.com/dcc-mcp/fpt-cli/issues/138)) ([973425d](https://github.com/dcc-mcp/fpt-cli/commit/973425d2acdf233b6969a9fae100d38ca80fb3fa))
+* improve code quality with Display impls, PartialEq derives, and idiomatic patterns ([#144](https://github.com/dcc-mcp/fpt-cli/issues/144)) ([c8aa2a2](https://github.com/dcc-mcp/fpt-cli/commit/c8aa2a27b0d7c670c2304370aa45b6dae409e30b))
+* improve documentation and clean up minor code smells ([#136](https://github.com/dcc-mcp/fpt-cli/issues/136)) ([cb12ac1](https://github.com/dcc-mcp/fpt-cli/commit/cb12ac1634ee011780c35d31fb5ea298bcae1756))
+* move fpt cli to dcc mcp ([9c2e7e4](https://github.com/dcc-mcp/fpt-cli/commit/9c2e7e4a3be368c8799c622bfa970f39811b90f3))
+
 ## [0.2.25](https://github.com/loonghao/fpt-cli/compare/v0.2.24...v0.2.25) (2026-04-02)
 
 
