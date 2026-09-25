@@ -14,6 +14,12 @@ pub enum AuthMode {
     SessionToken,
 }
 
+impl std::fmt::Display for AuthMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl AuthMode {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -161,7 +167,7 @@ pub struct ConnectionSettings {
     pub api_version: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ConnectionSummary {
     pub site: String,
     pub auth_mode: AuthMode,
@@ -472,6 +478,7 @@ fn validate_profile_name(profile_name: &str) -> Result<()> {
     Ok(())
 }
 
+/// Returns the API version string, defaulting to `v1.1` when absent.
 #[must_use]
 pub fn api_version_or_default(value: Option<&str>) -> String {
     value
@@ -481,6 +488,10 @@ pub fn api_version_or_default(value: Option<&str>) -> String {
         .to_string()
 }
 
+/// Returns the path to the persisted configuration file.
+///
+/// Checks `FPT_CONFIG_PATH` first, then falls back to the platform-specific
+/// config directory (`APPDATA` on Windows, `XDG_CONFIG_HOME` elsewhere).
 pub fn config_file_path() -> Result<PathBuf> {
     if let Some(path) = env::var_os("FPT_CONFIG_PATH") {
         return Ok(PathBuf::from(path));

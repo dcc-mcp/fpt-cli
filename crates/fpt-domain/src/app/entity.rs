@@ -380,31 +380,31 @@ fn validate_relationship_body(body: &Value) -> Result<()> {
             )
     })?;
 
-    if !object.contains_key("data") {
-        return Err(AppError::invalid_input(
+    if object.contains_key("data") {
+        Ok(())
+    } else {
+        Err(AppError::invalid_input(
             "relationship write body must contain a `data` field with an array of entity links",
         )
         .with_operation("validate_relationship_body")
         .with_missing_fields(["data"])
         .with_expected_shape(
             "a JSON object containing `data` (array of entity link objects with `type` and `id`)",
-        ));
+        ))
     }
-
-    Ok(())
 }
 
 /// Validate that the entity share body is a JSON object containing `entities` or `projects`.
 fn validate_share_body(body: &Value) -> Result<()> {
-    body.as_object().ok_or_else(|| {
-        AppError::invalid_input("entity share body must be a JSON object")
-            .with_operation("validate_share_body")
-            .with_expected_shape(
-                "a JSON object describing the share target (e.g. containing `entities` or project links)",
-            )
-    })?;
-
-    Ok(())
+    body.as_object()
+        .ok_or_else(|| {
+            AppError::invalid_input("entity share body must be a JSON object")
+                .with_operation("validate_share_body")
+                .with_expected_shape(
+                    "a JSON object describing the share target (e.g. containing `entities` or project links)",
+                )
+        })
+        .map(|_| ())
 }
 
 /// Validate that an entity type name is safe to use in a REST URL path.

@@ -72,12 +72,13 @@ where
 }
 
 fn validate_work_day_rule_body(body: &Value) -> Result<()> {
-    body.as_object().ok_or_else(|| {
-        AppError::invalid_input("work day rule update body must be a JSON object")
-            .with_operation("schedule_work_day_rules_update")
-            .with_expected_shape(
-                "a JSON object containing work day rule fields such as `date`, `description`, or `is_working`",
-            )
-    })?;
-    Ok(())
+    body.as_object()
+        .ok_or_else(|| {
+            AppError::invalid_input("work day rule update body must be a JSON object")
+                .with_operation("schedule_work_day_rules_update")
+                .with_expected_shape(
+                    "a JSON object containing work day rule fields such as `date`, `description`, or `is_working`",
+                )
+        })
+        .map(|_| ())
 }

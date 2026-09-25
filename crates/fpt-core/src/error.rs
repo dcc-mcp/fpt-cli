@@ -29,6 +29,12 @@ pub enum ErrorCode {
     InternalError,
 }
 
+impl std::fmt::Display for ErrorCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl ErrorCode {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -74,7 +80,7 @@ impl ErrorCode {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ErrorEnvelope {
     pub code: &'static str,
     pub message: String,
