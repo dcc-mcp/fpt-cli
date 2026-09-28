@@ -32,11 +32,15 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup vx
-        uses: loonghao/vx@main
+        uses: loonghao/vx@v0.9.33
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only takes
+          # effect with the vx tool cache off.
+          cache: false
 
       - name: Setup tools (vx)
         run: vx setup
@@ -69,11 +73,15 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup vx
-        uses: loonghao/vx@main
+        uses: loonghao/vx@v0.9.33
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only takes
+          # effect with the vx tool cache off.
+          cache: false
 
       - name: Setup tools (vx)
         run: vx setup
@@ -100,11 +108,15 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup vx
-        uses: loonghao/vx@main
+        uses: loonghao/vx@v0.9.33
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only takes
+          # effect with the vx tool cache off.
+          cache: false
 
       - name: Setup tools (vx)
         run: vx setup
@@ -152,11 +164,15 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup vx
-        uses: loonghao/vx@main
+        uses: loonghao/vx@v0.9.33
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only takes
+          # effect with the vx tool cache off.
+          cache: false
 
       - name: Setup tools (vx)
         run: vx setup
