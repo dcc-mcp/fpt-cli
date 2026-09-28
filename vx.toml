@@ -5,10 +5,6 @@ python = "3.12"
 rust = "stable"
 uv = "latest"
 
-[settings]
-auto_install = true
-parallel_install = true
-
 [scripts]
 build = "cargo build"
 build-release = "cargo build --release"
