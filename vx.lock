@@ -4,7 +4,7 @@
 version = 2
 
 [metadata]
-generated_at = "2026-09-27T19:01:35Z"
+generated_at = "2026-09-29T09:36:46Z"
 vx_version = "0.9.33"
 platform = "x86_64-pc-windows-msvc"
 
@@ -59,9 +59,9 @@ windows-x64 = "https://github.com/astral-sh/python-build-standalone/releases/dow
 lts = "true"
 
 [tools.rust]
-version = "stable"
+version = "rustup-managed"
 source = "provider"
-resolved_from = "stable"
+resolved_from = "rustup-managed"
 ecosystem = "generic"
 download_url = "https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe"
 
@@ -73,16 +73,16 @@ linux-x64 = "https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/r
 windows-x64 = "https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe"
 
 [tools.uv]
-version = "0.12.19"
+version = "0.12.20"
 source = "python"
 resolved_from = "latest"
 ecosystem = "python"
-download_url = "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-x86_64-pc-windows-msvc.zip"
+download_url = "https://github.com/astral-sh/uv/releases/download/0.12.20/uv-x86_64-pc-windows-msvc.zip"
 
 [tools.uv.platform_urls]
-darwin-arm64 = "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-aarch64-apple-darwin.tar.gz"
-darwin-x64 = "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-x86_64-apple-darwin.tar.gz"
-linux-arm64 = "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-aarch64-unknown-linux-musl.tar.gz"
-linux-x64 = "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-x86_64-unknown-linux-musl.tar.gz"
-windows-arm64 = "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-aarch64-pc-windows-msvc.zip"
-windows-x64 = "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-x86_64-pc-windows-msvc.zip"
+darwin-arm64 = "https://github.com/astral-sh/uv/releases/download/0.12.20/uv-aarch64-apple-darwin.tar.gz"
+darwin-x64 = "https://github.com/astral-sh/uv/releases/download/0.12.20/uv-x86_64-apple-darwin.tar.gz"
+linux-arm64 = "https://github.com/astral-sh/uv/releases/download/0.12.20/uv-aarch64-unknown-linux-musl.tar.gz"
+linux-x64 = "https://github.com/astral-sh/uv/releases/download/0.12.20/uv-x86_64-unknown-linux-musl.tar.gz"
+windows-arm64 = "https://github.com/astral-sh/uv/releases/download/0.12.20/uv-aarch64-pc-windows-msvc.zip"
+windows-x64 = "https://github.com/astral-sh/uv/releases/download/0.12.20/uv-x86_64-pc-windows-msvc.zip"

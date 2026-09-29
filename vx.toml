@@ -2,7 +2,11 @@
 just = "latest"
 node = "22"
 python = "3.12"
-rust = "stable"
+# rustup owns Rust here: this repo has no rust-toolchain.toml and CI runs on
+# runner images that already ship rustup (it later does `vx rustup component
+# add ...`). `stable` was a floating channel, which R2 bans; `rustup-managed`
+# records that ownership instead of tracking a channel.
+rust = "rustup-managed"
 uv = "latest"
 
 [scripts]

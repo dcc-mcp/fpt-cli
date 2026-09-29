@@ -32,11 +32,29 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup vx
-        uses: loonghao/vx@main
+        uses: loonghao/vx@v0.9.33
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only holds
+          # with the vx tool cache off.
+          cache: false
+
+      # The action's restore-keys can hand back a vx binary that predates the
+      # pin, which silently drops CI back to resolving versions from vx.toml.
+      # Fail loudly instead of running the job on unproven tool versions.
+      - name: Assert the vx pin took effect
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(vx --version | head -1)"
+          echo "vx version: ${actual}"
+          if [[ "${actual}" != *"0.9.33"* ]]; then
+            echo "::error::expected vx 0.9.33, got '${actual}'; the pin did not take effect"
+            exit 1
+          fi
 
       - name: Setup tools (vx)
         run: vx setup
@@ -69,11 +87,29 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup vx
-        uses: loonghao/vx@main
+        uses: loonghao/vx@v0.9.33
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only holds
+          # with the vx tool cache off.
+          cache: false
+
+      # The action's restore-keys can hand back a vx binary that predates the
+      # pin, which silently drops CI back to resolving versions from vx.toml.
+      # Fail loudly instead of running the job on unproven tool versions.
+      - name: Assert the vx pin took effect
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(vx --version | head -1)"
+          echo "vx version: ${actual}"
+          if [[ "${actual}" != *"0.9.33"* ]]; then
+            echo "::error::expected vx 0.9.33, got '${actual}'; the pin did not take effect"
+            exit 1
+          fi
 
       - name: Setup tools (vx)
         run: vx setup
@@ -100,17 +136,40 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup vx
-        uses: loonghao/vx@main
+        uses: loonghao/vx@v0.9.33
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only holds
+          # with the vx tool cache off.
+          cache: false
+
+      # The action's restore-keys can hand back a vx binary that predates the
+      # pin, which silently drops CI back to resolving versions from vx.toml.
+      # Fail loudly instead of running the job on unproven tool versions.
+      - name: Assert the vx pin took effect
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(vx --version | head -1)"
+          echo "vx version: ${actual}"
+          if [[ "${actual}" != *"0.9.33"* ]]; then
+            echo "::error::expected vx 0.9.33, got '${actual}'; the pin did not take effect"
+            exit 1
+          fi
 
       - name: Setup tools (vx)
         run: vx setup
 
+      # Not `vx rustup` / `vx cargo`: under vx 0.9.33 those provision a
+      # vx-managed rustup instead of the runner's, and the wrapper exits 0 as
+      # soon as a non-default component starts downloading, so llvm-tools never
+      # unpacks and cargo-llvm-cov finds no llvm-profdata. rustup owns Rust in
+      # this repo (rust = "rustup-managed"), so talk to rustup directly.
       - name: Add llvm-tools-preview
-        run: vx rustup component add llvm-tools-preview
+        run: rustup component add llvm-tools-preview
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -118,10 +177,10 @@ jobs:
           shared-key: coverage
 
       - name: Install cargo-llvm-cov
-        run: vx cargo install cargo-llvm-cov --locked
+        run: cargo install cargo-llvm-cov --locked
 
       - name: Generate coverage report
-        run: vx cargo llvm-cov --workspace --lcov --output-path lcov.info
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
@@ -152,11 +211,29 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup vx
-        uses: loonghao/vx@main
+        uses: loonghao/vx@v0.9.33
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only holds
+          # with the vx tool cache off.
+          cache: false
+
+      # The action's restore-keys can hand back a vx binary that predates the
+      # pin, which silently drops CI back to resolving versions from vx.toml.
+      # Fail loudly instead of running the job on unproven tool versions.
+      - name: Assert the vx pin took effect
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(vx --version | head -1)"
+          echo "vx version: ${actual}"
+          if [[ "${actual}" != *"0.9.33"* ]]; then
+            echo "::error::expected vx 0.9.33, got '${actual}'; the pin did not take effect"
+            exit 1
+          fi
 
       - name: Setup tools (vx)
         run: vx setup
