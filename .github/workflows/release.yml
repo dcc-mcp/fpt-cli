@@ -37,7 +37,7 @@ jobs:
       - name: Setup vx
         uses: loonghao/vx@main
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
 
@@ -71,7 +71,7 @@ jobs:
       - name: Setup vx
         uses: loonghao/vx@main
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
 
@@ -127,7 +127,7 @@ jobs:
       - name: Setup vx
         uses: loonghao/vx@main
         with:
-          version: "0.8.0"
+          version: "0.9.33"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache-key-prefix: vx-tools-${{ runner.os }}-${{ runner.arch }}
 
