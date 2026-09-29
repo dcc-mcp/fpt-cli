@@ -163,8 +163,13 @@ jobs:
       - name: Setup tools (vx)
         run: vx setup
 
+      # Not `vx rustup` / `vx cargo`: under vx 0.9.33 those provision a
+      # vx-managed rustup instead of the runner's, and the wrapper exits 0 as
+      # soon as a non-default component starts downloading, so llvm-tools never
+      # unpacks and cargo-llvm-cov finds no llvm-profdata. rustup owns Rust in
+      # this repo (rust = "rustup-managed"), so talk to rustup directly.
       - name: Add llvm-tools-preview
-        run: vx rustup component add llvm-tools-preview
+        run: rustup component add llvm-tools-preview
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -172,10 +177,10 @@ jobs:
           shared-key: coverage
 
       - name: Install cargo-llvm-cov
-        run: vx cargo install cargo-llvm-cov --locked
+        run: cargo install cargo-llvm-cov --locked
 
       - name: Generate coverage report
-        run: vx cargo llvm-cov --workspace --lcov --output-path lcov.info
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
