@@ -8,6 +8,11 @@
 //! full ShotGrid domain model without any CLI argument parsing.
 
 #![allow(clippy::result_large_err)]
+// `async_trait` adds `#[must_use]` to every method of `ShotgridTransport`, whose
+// methods already return the `#[must_use]` `Result` alias. Clippy 1.99 flags that
+// duplication as `double_must_use`; the attribute comes from the macro, so there
+// is no source-level way to remove one of the two.
+#![allow(clippy::double_must_use)]
 
 pub mod app;
 pub mod capability;
