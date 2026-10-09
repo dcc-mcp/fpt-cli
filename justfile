@@ -57,11 +57,20 @@ package-openclaw-skill:
     vx uv run python scripts/package_openclaw_skill.py skills/fpt-cli dist/skills
 
 
+# ClawHub CLI pin. Keep this at 0.8.0 or newer: the registry rejects `publish`
+# unless the client sends `acceptLicenseTerms` (MIT-0) in the payload, and the
+# CLI only started sending it in 0.8.0. Older pins fail with
+# "MIT-0 license terms must be accepted to publish skills" even though
+# `--no-input` leaves no way to accept anything.
+# Override with CLAWHUB_CLI_PACKAGE (the CI workflow sets it) to try a
+# candidate version without editing this file.
+clawhub_cli := env_var_or_default("CLAWHUB_CLI_PACKAGE", "clawhub@0.8.0")
+
 clawhub-sync-dry-run:
-    vx npx clawhub@0.7.0 sync --root skills --all --dry-run --no-input
+    vx npx {{clawhub_cli}} sync --root skills --all --dry-run --no-input
 
 clawhub-sync:
-    vx npx clawhub@0.7.0 sync --root skills --all --no-input
+    vx npx {{clawhub_cli}} sync --root skills --all --no-input
 
 
 build-release *args:
