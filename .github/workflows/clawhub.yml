@@ -43,7 +43,9 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  CLAWHUB_CLI_PACKAGE: clawhub@0.7.0
+  # Must stay >= 0.8.0: the registry rejects publishes without
+  # `acceptLicenseTerms` (MIT-0), which the CLI only sends from 0.8.0 on.
+  CLAWHUB_CLI_PACKAGE: clawhub@0.8.0
   CLAWHUB_CONFIG_PATH: .clawhub/config.json
   CLAWHUB_DISABLE_TELEMETRY: "1"
 
