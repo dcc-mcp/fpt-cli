@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.27](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.26...v0.2.27) (2026-10-09)
+
+
+### Bug Fixes
+
+* **ci:** pin clawhub to 0.8.0 so sync sends the MIT-0 license acceptance ([#151](https://github.com/dcc-mcp/fpt-cli/issues/151)) ([6792746](https://github.com/dcc-mcp/fpt-cli/commit/67927461c5a341797e4a6ea06db982781cf94a8a))
+
 ## [0.2.26](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.25...v0.2.26) (2026-10-08)
 
 
