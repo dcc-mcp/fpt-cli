@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import json
 import os
 import shutil
 import subprocess
@@ -49,14 +48,24 @@ param([string]$Version)
 $ErrorActionPreference = 'Stop'
 function Invoke-RestMethod {
     param([string]$Uri)
-    Add-Content -LiteralPath $env:FPT_TEST_REQUESTS -Value $Uri
-    if ($Uri -ne "https://api.github.com/repos/$env:FPT_INSTALL_REPOSITORY/releases/latest") { throw "Unexpected fixture metadata URL: $Uri" }
-    if ($env:FPT_TEST_MODE -eq 'lookup_failure') { throw 'fixture latest lookup failed' }
-    return (Get-Content -LiteralPath $env:FPT_TEST_METADATA -Raw | ConvertFrom-Json)
+    Add-Content -LiteralPath $env:FPT_TEST_REQUESTS -Value "REST $Uri"
+    throw 'REST lookup is forbidden in installer fixtures'
 }
 function Invoke-WebRequest {
-    param([string]$Uri, [string]$OutFile)
+    param([string]$Uri, [string]$OutFile, [string]$Method, [switch]$UseBasicParsing)
     Add-Content -LiteralPath $env:FPT_TEST_REQUESTS -Value $Uri
+    if ($Method -eq 'Head') {
+        if ($Uri -ne "$env:FPT_TEST_BASE/latest" -or $OutFile -or -not $UseBasicParsing) { throw 'Unexpected fixture HEAD request' }
+        if ($env:FPT_TEST_MODE -eq 'lookup_failure') { throw 'fixture latest lookup failed' }
+        if ($env:FPT_TEST_MODE -eq 'missing_uri') {
+            return [pscustomobject]@{ BaseResponse = [pscustomobject]@{ RequestMessage = $null } }
+        }
+        $resolvedUri = [uri]$env:FPT_TEST_LATEST_URL
+        if ($env:FPT_TEST_RESPONSE_SHAPE -eq 'ps5') {
+            return [pscustomobject]@{ BaseResponse = [pscustomobject]@{ ResponseUri = $resolvedUri } }
+        }
+        return [pscustomobject]@{ BaseResponse = [pscustomobject]@{ RequestMessage = [pscustomobject]@{ RequestUri = $resolvedUri } } }
+    }
     if ($Uri -ne $env:FPT_TEST_ASSET_URL) { throw "Unexpected fixture asset URL: $Uri" }
     if ($env:FPT_TEST_MODE -eq 'asset_failure') { throw 'fixture asset download failed' }
     Copy-Item -LiteralPath $env:FPT_TEST_ARCHIVE -Destination $OutFile
@@ -151,13 +160,13 @@ class InstallerFixtures(unittest.TestCase):
         archive = self.root / "release.zip"
         with zipfile.ZipFile(archive, "w") as package:
             package.writestr("fpt.exe", NEW_BINARY)
-        metadata = self.root / "metadata.json"
-        metadata.write_text(json.dumps({"tag_name": VERSION}), encoding="utf-8")
         wrapper = self.root / "fixture.ps1"
         wrapper.write_text(POWERSHELL_FIXTURE, encoding="utf-8")
         self.env.update({
             "FPT_TEST_INSTALLER": str(ROOT / "scripts/install.ps1"),
-            "FPT_TEST_METADATA": str(metadata),
+            "FPT_TEST_BASE": BASE_URL,
+            "FPT_TEST_LATEST_URL": f"{BASE_URL}/tag/{VERSION}",
+            "FPT_TEST_RESPONSE_SHAPE": "ps5",
             "FPT_TEST_ASSET_URL": f"{BASE_URL}/download/{VERSION}/fpt-{VERSION}-x86_64-pc-windows-msvc.zip",
             "FPT_TEST_ARCHIVE": str(archive),
         })
@@ -186,20 +195,22 @@ class InstallerFixtures(unittest.TestCase):
         self.assertEqual(self.calls(), [self.env["FPT_TEST_ASSET_URL"]])
 
     def test_posix_failures_preserve_existing_binary(self) -> None:
-        for mode in ["lookup_failure", "asset_failure", "invalid_latest", "corrupt_archive"]:
+        for mode in ["lookup_failure", "asset_failure", "invalid_latest", "invalid_tag", "corrupt_archive"]:
             with self.subTest(mode=mode):
                 self.requests.unlink(missing_ok=True)
                 command = self.prepare_posix()
                 self.env["FPT_TEST_MODE"] = mode
                 if mode == "invalid_latest":
                     self.env["FPT_TEST_LATEST_URL"] = "https://example.invalid/releases/tag/v9.8.7"
+                elif mode == "invalid_tag":
+                    self.env["FPT_TEST_LATEST_URL"] = f"{BASE_URL}/tag/{VERSION}_bad"
                 if mode == "corrupt_archive":
                     Path(self.env["FPT_TEST_ARCHIVE"]).write_bytes(b"not an archive")
                 result = self.run_script(command, "fpt")
                 self.assert_result(result, "fpt", False)
                 self.assertTrue(result.stderr.strip(), result.stdout)
                 expected = [f"{BASE_URL}/latest"]
-                if mode not in {"lookup_failure", "invalid_latest"}:
+                if mode not in {"lookup_failure", "invalid_latest", "invalid_tag"}:
                     expected.append(self.env["FPT_TEST_ASSET_URL"])
                 self.assertEqual(self.calls(), expected)
 
@@ -208,26 +219,30 @@ class InstallerFixtures(unittest.TestCase):
         shells = [path for name in ["powershell", "pwsh"] if (path := shutil.which(name))]
         self.assertTrue(shells, "Windows must execute a real PowerShell installer")
         for shell in shells:
-            for mode in ["latest", "explicit", "environment", "lookup_failure", "asset_failure", "invalid_latest", "corrupt_archive"]:
+            for mode in ["latest_ps5", "latest_ps7", "explicit", "environment", "lookup_failure", "asset_failure", "invalid_latest", "invalid_tag", "missing_uri", "corrupt_archive"]:
                 with self.subTest(shell=Path(shell).name, mode=mode):
                     self.requests.unlink(missing_ok=True)
                     command = self.prepare_powershell(shell)
                     self.env.pop("FPT_INSTALL_VERSION", None)
                     self.env["FPT_TEST_MODE"] = mode
+                    if mode == "latest_ps7":
+                        self.env["FPT_TEST_RESPONSE_SHAPE"] = "ps7"
                     if mode == "explicit":
                         command += ["-Version", VERSION[1:]]
                     elif mode == "environment":
                         self.env["FPT_INSTALL_VERSION"] = VERSION
                     elif mode == "invalid_latest":
-                        Path(self.env["FPT_TEST_METADATA"]).write_text('{"tag_name":"../../bad"}', encoding="utf-8")
+                        self.env["FPT_TEST_LATEST_URL"] = "https://example.invalid/releases/tag/v9.8.7"
+                    elif mode == "invalid_tag":
+                        self.env["FPT_TEST_LATEST_URL"] = f"{BASE_URL}/tag/{VERSION}_bad"
                     elif mode == "corrupt_archive":
                         Path(self.env["FPT_TEST_ARCHIVE"]).write_bytes(b"not an archive")
-                    success = mode in {"latest", "explicit", "environment"}
+                    success = mode in {"latest_ps5", "latest_ps7", "explicit", "environment"}
                     result = self.run_script(command, "fpt.exe")
                     self.assert_result(result, "fpt.exe", success)
-                    metadata_url = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
-                    expected = [] if mode in {"explicit", "environment"} else [metadata_url]
-                    if mode not in {"lookup_failure", "invalid_latest"}:
+                    latest_url = f"{BASE_URL}/latest"
+                    expected = [] if mode in {"explicit", "environment"} else [latest_url]
+                    if mode not in {"lookup_failure", "invalid_latest", "invalid_tag", "missing_uri"}:
                         expected.append(self.env["FPT_TEST_ASSET_URL"])
                     self.assertEqual(self.calls(), expected)
                     if not success:

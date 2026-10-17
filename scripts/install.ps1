@@ -15,12 +15,30 @@ switch ($architecture) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Version) -or $Version -eq "latest") {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases/latest"
-    $tag = if ($null -ne $release) { $release.PSObject.Properties['tag_name'] }
-    if ($null -eq $tag -or $tag.Value -isnot [string] -or $tag.Value -cnotmatch '^v[0-9][0-9A-Za-z.+-]*$') {
+    $response = Invoke-WebRequest -Uri "https://github.com/$Repository/releases/latest" -Method Head -UseBasicParsing
+    $baseResponse = if ($null -ne $response) { $response.PSObject.Properties['BaseResponse'] }
+    $finalUri = $null
+    if ($null -ne $baseResponse -and $null -ne $baseResponse.Value) {
+        $responseUri = $baseResponse.Value.PSObject.Properties['ResponseUri']
+        if ($null -ne $responseUri) {
+            $finalUri = $responseUri.Value
+        }
+        else {
+            $requestMessage = $baseResponse.Value.PSObject.Properties['RequestMessage']
+            if ($null -ne $requestMessage -and $null -ne $requestMessage.Value) {
+                $requestUri = $requestMessage.Value.PSObject.Properties['RequestUri']
+                if ($null -ne $requestUri) { $finalUri = $requestUri.Value }
+            }
+        }
+    }
+    $prefix = "https://github.com/$Repository/releases/tag/"
+    if ($finalUri -isnot [uri] -or -not $finalUri.IsAbsoluteUri -or -not $finalUri.AbsoluteUri.StartsWith($prefix, [System.StringComparison]::Ordinal)) {
+        throw "Latest release did not resolve to a versioned tag in $Repository"
+    }
+    $Version = $finalUri.AbsoluteUri.Substring($prefix.Length)
+    if ($Version -cnotmatch '^v[0-9][0-9A-Za-z.+-]*$') {
         throw "Latest release did not provide a valid versioned tag"
     }
-    $Version = $tag.Value
 }
 if (-not $Version.StartsWith("v")) {
     $Version = "v$Version"
@@ -37,7 +55,7 @@ try {
     New-Item -ItemType Directory -Force -Path $tempRoot, $extractDir, $InstallDir | Out-Null
 
     Write-Host "Downloading $downloadAsset from $downloadUrl"
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath -UseBasicParsing
     Expand-Archive -Path $archivePath -DestinationPath $extractDir -Force
     Copy-Item -Path (Join-Path $extractDir "fpt.exe") -Destination $binaryPath -Force
 
