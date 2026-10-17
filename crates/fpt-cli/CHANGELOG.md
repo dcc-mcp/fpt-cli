@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.30](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.29...v0.2.30) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update rust crate libc to v0.2.189 ([#125](https://github.com/dcc-mcp/fpt-cli/issues/125)) ([d22de6f](https://github.com/dcc-mcp/fpt-cli/commit/d22de6ffed366ae43302d42c01847d2d7fc9a6ee))
+
 ## [0.2.29](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.28...v0.2.29) (2026-10-17)
 
 
