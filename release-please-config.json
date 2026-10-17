@@ -5,11 +5,6 @@
   "separate-pull-requests": false,
   "pull-request-title-pattern": "chore${scope}: release v${version}",
   "group-pull-request-title-pattern": "chore${scope}: release v${version}",
-  "plugins": [
-    {
-      "type": "cargo-workspace"
-    }
-  ],
   "packages": {
 
     ".": {
@@ -22,6 +17,11 @@
           "type": "toml",
           "path": "Cargo.toml",
           "jsonpath": "$.workspace.package.version"
+        },
+        {
+          "type": "toml",
+          "path": "Cargo.lock",
+          "jsonpath": "$.package[?(!@.source && (@.name.value === 'fpt-cli' || @.name.value === 'fpt-core' || @.name.value === 'fpt-domain'))].version"
         }
       ]
     }

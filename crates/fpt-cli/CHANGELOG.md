@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.2.30](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.29...v0.2.30) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update rust crate libc to v0.2.189 ([#125](https://github.com/dcc-mcp/fpt-cli/issues/125)) ([d22de6f](https://github.com/dcc-mcp/fpt-cli/commit/d22de6ffed366ae43302d42c01847d2d7fc9a6ee))
+
+## [0.2.29](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.28...v0.2.29) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** bump rand from 0.9.2 to 0.9.4 ([#126](https://github.com/dcc-mcp/fpt-cli/issues/126)) ([03651bf](https://github.com/dcc-mcp/fpt-cli/commit/03651bfd03cbc02b6689dd60df65a4148cbf98ff))
+
+## [0.2.28](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.27...v0.2.28) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update rust crate bitflags to v2.13.1 ([#127](https://github.com/dcc-mcp/fpt-cli/issues/127)) ([9a5c97e](https://github.com/dcc-mcp/fpt-cli/commit/9a5c97e91fa85296489e1e63740ef09859e0d639))
+
+## [0.2.27](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.26...v0.2.27) (2026-10-17)
+
+
+### Bug Fixes
+
+* **ci:** pin clawhub to 0.8.0 so sync sends the MIT-0 license acceptance ([#151](https://github.com/dcc-mcp/fpt-cli/issues/151)) ([6792746](https://github.com/dcc-mcp/fpt-cli/commit/67927461c5a341797e4a6ea06db982781cf94a8a))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump rustls-webpki from 0.103.10 to 0.103.13 ([#129](https://github.com/dcc-mcp/fpt-cli/issues/129)) ([e4c84fc](https://github.com/dcc-mcp/fpt-cli/commit/e4c84fc8c74ffb2b350e5bb7c14013ed3fd50829))
+* **deps:** update googleapis/release-please-action action to v4.4.1 ([#124](https://github.com/dcc-mcp/fpt-cli/issues/124)) ([d1e8793](https://github.com/dcc-mcp/fpt-cli/commit/d1e87939248ea5f3f530bed3c0490512afb26327))
+
 ## [0.2.26](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.25...v0.2.26) (2026-10-08)
 
 
