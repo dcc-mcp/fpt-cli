@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.31](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.30...v0.2.31) (2026-10-17)
+
+
+### Bug Fixes
+
+* collapse checkpoint and filter guards ([b4c3206](https://github.com/dcc-mcp/fpt-cli/commit/b4c32068c6c9e9e80d4fe51ae3eeab73ba4c69f9))
+* collapse the upsert transport fixture guard ([5354540](https://github.com/dcc-mcp/fpt-cli/commit/53545401e7fe7999a5de6511f91c6138bc9ee6b7))
+* integrate minimum Rust checks with installer fixes ([bafccca](https://github.com/dcc-mcp/fpt-cli/commit/bafccca08b0591ab5b4c5e85332dcbb5b559a5cf))
+* resolve PowerShell latest release through web redirect ([2a8fc72](https://github.com/dcc-mcp/fpt-cli/commit/2a8fc7280377a5f0a95d0b2313e7b911f7998750))
+* resolve versioned release assets in installers ([d25c15e](https://github.com/dcc-mcp/fpt-cli/commit/d25c15e7ef06842893180f07a35abf52604e41b5))
+* validate the minimum supported Rust version ([6054135](https://github.com/dcc-mcp/fpt-cli/commit/605413582559066e2aa9d7eb72a2125b99c91a67))
+
+
+### Miscellaneous Chores
+
+* merge main into zip dependency update ([d44e648](https://github.com/dcc-mcp/fpt-cli/commit/d44e648cb7e1dfc631865fa2d934db77326d0bd6))
+
 ## [0.2.30](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.29...v0.2.30) (2026-10-17)
 
 
