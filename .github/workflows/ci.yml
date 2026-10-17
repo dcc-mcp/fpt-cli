@@ -128,6 +128,82 @@ jobs:
         run: vx just test
 
 
+  msrv:
+    name: Minimum Rust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup vx
+        uses: loonghao/vx@v0.9.33
+        with:
+          version: "0.9.33"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: false
+
+      - name: Assert the vx pin took effect
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(vx --version | head -1)"
+          echo "vx version: ${actual}"
+          if [[ "${actual}" != *"0.9.33"* ]]; then
+            echo "::error::expected vx 0.9.33, got '${actual}'; the pin did not take effect"
+            exit 1
+          fi
+
+      - name: Setup tools (vx)
+        run: vx setup
+
+      - name: Read minimum Rust from Cargo.toml
+        id: msrv
+        shell: bash
+        run: |
+          set -euo pipefail
+          msrv="$(vx --no-auto-install --cache-mode offline uv run --offline --no-project --no-python-downloads python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["workspace"]["package"]["rust-version"])')"
+          if [[ ! "$msrv" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Cargo.toml rust-version must be a full x.y.z version" >&2
+            exit 1
+          fi
+          printf 'version=%s\n' "$msrv" >> "$GITHUB_OUTPUT"
+
+      - name: Fix MSVC linker (remove Git's link.exe)
+        if: runner.os == 'Windows'
+        run: Remove-Item 'C:\Program Files\Git\usr\bin\link.exe' -Force -ErrorAction SilentlyContinue
+        shell: pwsh
+
+      # vx 0.9.33 can provision a different Rustup for non-default toolchains.
+      # Use the runner-owned Rustup explicitly without changing its default.
+      - name: Install minimum Rust in the CI runner
+        shell: bash
+        env:
+          MINIMUM_RUST: ${{ steps.msrv.outputs.version }}
+        run: |
+          set -euo pipefail
+          rustup toolchain install "$MINIMUM_RUST" --profile minimal
+          rustup run "$MINIMUM_RUST" rustc --version
+
+      - name: Check all targets at minimum Rust
+        shell: bash
+        env:
+          MINIMUM_RUST: ${{ steps.msrv.outputs.version }}
+        run: rustup run "$MINIMUM_RUST" cargo check --locked --workspace --all-targets
+
+      - name: Run tests at minimum Rust
+        shell: bash
+        env:
+          MINIMUM_RUST: ${{ steps.msrv.outputs.version }}
+        run: rustup run "$MINIMUM_RUST" cargo test --locked --workspace
+
+
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest

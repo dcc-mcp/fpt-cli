@@ -44,6 +44,8 @@ This repository provides near-complete coverage of the ShotGrid REST and RPC API
 
 All environments in this project should be managed through **`vx`**, and command collections should be exposed through the repository **`justfile`**.
 
+Building from source requires **Rust 1.88.0 or newer**. The minimum-Rust CI matrix reads the workspace's `rust-version` and checks Linux, macOS, and Windows. **Prebuilt release binaries do not require Rust.**
+
 ```bash
 vx setup
 vx just test

@@ -43,6 +43,8 @@
 
 项目中的所有环境都应通过 **`vx`** 管理，命令集合通过仓库里的 **`justfile`** 暴露。
 
+从源码构建需要 **Rust 1.88.0 或更高版本**。最低 Rust 版本 CI 矩阵会读取 workspace 的 `rust-version`，并检查 Linux、macOS 和 Windows。**使用预构建二进制不需要安装 Rust。**
+
 
 ```bash
 vx setup
