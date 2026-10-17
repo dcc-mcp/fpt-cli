@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.28](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.27...v0.2.28) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update rust crate bitflags to v2.13.1 ([#127](https://github.com/dcc-mcp/fpt-cli/issues/127)) ([9a5c97e](https://github.com/dcc-mcp/fpt-cli/commit/9a5c97e91fa85296489e1e63740ef09859e0d639))
+
 ## [0.2.27](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.26...v0.2.27) (2026-10-17)
 
 
