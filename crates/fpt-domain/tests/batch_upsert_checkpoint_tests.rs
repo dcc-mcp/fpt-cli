@@ -122,13 +122,13 @@ impl ShotgridTransport for UpsertTransport {
                 // Look for [key, "is", value] pattern
                 let mut found = None;
                 for cond in conditions {
-                    if let Some(arr) = cond.as_array() {
-                        if arr.len() == 3 {
-                            let lookup_key = serde_json::to_string(&arr[2]).unwrap_or_default();
-                            if let Some(existing) = self.existing_by_key.get(&lookup_key) {
-                                found = Some(existing.clone());
-                                break;
-                            }
+                    if let Some(arr) = cond.as_array()
+                        && arr.len() == 3
+                    {
+                        let lookup_key = serde_json::to_string(&arr[2]).unwrap_or_default();
+                        if let Some(existing) = self.existing_by_key.get(&lookup_key) {
+                            found = Some(existing.clone());
+                            break;
                         }
                     }
                 }
