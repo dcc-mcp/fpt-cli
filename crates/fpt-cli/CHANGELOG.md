@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.29](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.28...v0.2.29) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** bump rand from 0.9.2 to 0.9.4 ([#126](https://github.com/dcc-mcp/fpt-cli/issues/126)) ([03651bf](https://github.com/dcc-mcp/fpt-cli/commit/03651bfd03cbc02b6689dd60df65a4148cbf98ff))
+
 ## [0.2.28](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.27...v0.2.28) (2026-10-17)
 
 
