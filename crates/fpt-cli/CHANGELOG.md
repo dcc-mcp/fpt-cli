@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.32](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.31...v0.2.32) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update clap to 4.6.4 ([abb0e8d](https://github.com/dcc-mcp/fpt-cli/commit/abb0e8d51d577f9a927d1bd0c4ba6e64a51c3f56))
+* **deps:** update clap to 4.6.4 ([0496b1c](https://github.com/dcc-mcp/fpt-cli/commit/0496b1c728859e8f98d7fcd85cb663821da447c6))
+* **deps:** update Tokio to 1.53.1 on current main ([90513e7](https://github.com/dcc-mcp/fpt-cli/commit/90513e7947bad5fff23b4f7dc5a7b506b52d1102))
+
 ## [0.2.31](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.30...v0.2.31) (2026-10-17)
 
 
