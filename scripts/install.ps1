@@ -14,18 +14,19 @@ switch ($architecture) {
     default { throw "Unsupported Windows architecture: $architecture" }
 }
 
-$asset = "fpt-$target.zip"
 if ([string]::IsNullOrWhiteSpace($Version) -or $Version -eq "latest") {
-    $downloadAsset = $asset
-    $downloadUrl = "https://github.com/$Repository/releases/latest/download/$downloadAsset"
-}
-else {
-    if (-not $Version.StartsWith("v")) {
-        $Version = "v$Version"
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases/latest"
+    $tag = if ($null -ne $release) { $release.PSObject.Properties['tag_name'] }
+    if ($null -eq $tag -or $tag.Value -isnot [string] -or $tag.Value -cnotmatch '^v[0-9][0-9A-Za-z.+-]*$') {
+        throw "Latest release did not provide a valid versioned tag"
     }
-    $downloadAsset = "fpt-$Version-$target.zip"
-    $downloadUrl = "https://github.com/$Repository/releases/download/$Version/$downloadAsset"
+    $Version = $tag.Value
 }
+if (-not $Version.StartsWith("v")) {
+    $Version = "v$Version"
+}
+$downloadAsset = "fpt-$Version-$target.zip"
+$downloadUrl = "https://github.com/$Repository/releases/download/$Version/$downloadAsset"
 
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("fpt-install-" + [System.Guid]::NewGuid().ToString("N"))
 $archivePath = Join-Path $tempRoot $downloadAsset
