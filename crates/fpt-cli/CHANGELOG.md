@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.27](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.26...v0.2.27) (2026-10-17)
+
+
+### Bug Fixes
+
+* **ci:** pin clawhub to 0.8.0 so sync sends the MIT-0 license acceptance ([#151](https://github.com/dcc-mcp/fpt-cli/issues/151)) ([6792746](https://github.com/dcc-mcp/fpt-cli/commit/67927461c5a341797e4a6ea06db982781cf94a8a))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump rustls-webpki from 0.103.10 to 0.103.13 ([#129](https://github.com/dcc-mcp/fpt-cli/issues/129)) ([e4c84fc](https://github.com/dcc-mcp/fpt-cli/commit/e4c84fc8c74ffb2b350e5bb7c14013ed3fd50829))
+* **deps:** update googleapis/release-please-action action to v4.4.1 ([#124](https://github.com/dcc-mcp/fpt-cli/issues/124)) ([d1e8793](https://github.com/dcc-mcp/fpt-cli/commit/d1e87939248ea5f3f530bed3c0490512afb26327))
+
 ## [0.2.26](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.25...v0.2.26) (2026-10-08)
 
 
