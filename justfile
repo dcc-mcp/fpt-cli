@@ -43,6 +43,7 @@ pre-commit-run:
 
 ci:
     vx just fmt-check
+    vx just release-check
     vx just hakari-check
     vx just check
     vx just lint
@@ -81,6 +82,10 @@ build-release-target target:
 
 release-version:
     vx uv run python scripts/release_metadata.py version
+
+release-check:
+    vx uv run python -m unittest discover -s scripts -p test_release_metadata.py
+    vx uv run python scripts/release_metadata.py verify-workspace
 
 release-matrix:
     vx uv run python scripts/release_metadata.py matrix
