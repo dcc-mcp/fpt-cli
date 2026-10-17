@@ -974,7 +974,7 @@ dependencies = [
 
 [[package]]
 name = "fpt-cli"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -1000,7 +1000,7 @@ dependencies = [
 
 [[package]]
 name = "fpt-core"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde",
  "serde_json",
@@ -1009,7 +1009,7 @@ dependencies = [
 
 [[package]]
 name = "fpt-domain"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "async-trait",
  "fpt-core",
