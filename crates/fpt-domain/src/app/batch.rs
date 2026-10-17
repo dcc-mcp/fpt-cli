@@ -1156,12 +1156,11 @@ fn load_checkpoint_indices(path: &str) -> Result<HashSet<usize>> {
         if trimmed.is_empty() {
             continue;
         }
-        if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
-            if let Some(idx) = value.get("index").and_then(Value::as_u64) {
-                if let Ok(i) = usize::try_from(idx) {
-                    indices.insert(i);
-                }
-            }
+        if let Ok(value) = serde_json::from_str::<Value>(trimmed)
+            && let Some(idx) = value.get("index").and_then(Value::as_u64)
+            && let Ok(i) = usize::try_from(idx)
+        {
+            indices.insert(i);
         }
         // Silently skip malformed lines so a partial last write doesn't block resume.
     }
@@ -1200,13 +1199,12 @@ fn open_checkpoint_writer(path: &str, resume: bool) -> Result<File> {
 /// checkpoint line is acceptable — the item will simply be re-processed on
 /// the next resume.
 fn write_checkpoint(writer: &Option<std::sync::Mutex<File>>, result: &Value) {
-    if let Some(mutex) = writer {
-        if let Ok(mut file) = mutex.lock() {
-            // serde_json::to_string won't fail for Value
-            if let Ok(line) = serde_json::to_string(result) {
-                let _ = writeln!(file, "{line}");
-            }
-        }
+    if let Some(mutex) = writer
+        && let Ok(mut file) = mutex.lock()
+        // serde_json::to_string won't fail for Value
+        && let Ok(line) = serde_json::to_string(result)
+    {
+        let _ = writeln!(file, "{line}");
     }
 }
 

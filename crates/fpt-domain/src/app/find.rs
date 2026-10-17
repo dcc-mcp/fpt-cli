@@ -299,13 +299,13 @@ fn normalize_search_filters(value: Value, field_name: &str) -> Result<Value> {
         }
         Value::Object(ref map) => {
             // Validate nested filter conditions inside the object form too.
-            if let Some(inner_filters) = map.get("filters") {
-                if let Some(arr) = inner_filters.as_array() {
-                    let normalized = normalize_filter_conditions(arr.clone())?;
-                    let mut result = map.clone();
-                    result.insert("filters".to_string(), Value::Array(normalized));
-                    return Ok(Value::Object(result));
-                }
+            if let Some(inner_filters) = map.get("filters")
+                && let Some(arr) = inner_filters.as_array()
+            {
+                let normalized = normalize_filter_conditions(arr.clone())?;
+                let mut result = map.clone();
+                result.insert("filters".to_string(), Value::Array(normalized));
+                return Ok(Value::Object(result));
             }
             Ok(value)
         }
