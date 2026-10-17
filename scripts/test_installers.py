@@ -103,7 +103,10 @@ class InstallerFixtures(unittest.TestCase):
 
     def run_script(self, command: list[str], binary: str) -> subprocess.CompletedProcess[str]:
         (self.install / binary).write_bytes(OLD_BINARY)
-        return subprocess.run(command, env=self.env, capture_output=True, text=True, timeout=30)
+        return subprocess.run(
+            command, env=self.env, capture_output=True, text=True, timeout=30,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
 
     def assert_result(self, result: subprocess.CompletedProcess[str], binary: str, success: bool) -> None:
         detail = result.stdout + result.stderr
