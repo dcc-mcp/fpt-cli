@@ -51,21 +51,22 @@ case "$OS" in
         ;;
 esac
 
-ASSET="fpt-${TARGET}.tar.gz"
 case "$VERSION" in
     latest|'')
-        DOWNLOAD_ASSET="$ASSET"
-        DOWNLOAD_URL="https://github.com/${REPOSITORY}/releases/latest/download/${DOWNLOAD_ASSET}"
-        ;;
-    v*)
-        DOWNLOAD_ASSET="fpt-${VERSION}-${TARGET}.tar.gz"
-        DOWNLOAD_URL="https://github.com/${REPOSITORY}/releases/download/${VERSION}/${DOWNLOAD_ASSET}"
-        ;;
-    *)
-        DOWNLOAD_ASSET="fpt-v${VERSION}-${TARGET}.tar.gz"
-        DOWNLOAD_URL="https://github.com/${REPOSITORY}/releases/download/v${VERSION}/${DOWNLOAD_ASSET}"
+        RELEASE_PREFIX="https://github.com/${REPOSITORY}/releases/tag/"
+        RELEASE_URL="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/${REPOSITORY}/releases/latest")"
+        case "$RELEASE_URL" in
+            "${RELEASE_PREFIX}"v[0-9]*) VERSION="${RELEASE_URL#"$RELEASE_PREFIX"}" ;;
+            *) echo "error: latest release did not resolve to a versioned tag" >&2; exit 1 ;;
+        esac
+        case "$VERSION" in
+            *[!0-9A-Za-z.+-]*) echo "error: latest release returned an invalid versioned tag" >&2; exit 1 ;;
+        esac
         ;;
 esac
+case "$VERSION" in v*) ;; *) VERSION="v${VERSION}" ;; esac
+DOWNLOAD_ASSET="fpt-${VERSION}-${TARGET}.tar.gz"
+DOWNLOAD_URL="https://github.com/${REPOSITORY}/releases/download/${VERSION}/${DOWNLOAD_ASSET}"
 
 TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t fpt-install)"
 cleanup() {

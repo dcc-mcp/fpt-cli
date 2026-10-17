@@ -17,6 +17,7 @@ lint:
     vx cargo clippy --workspace --all-targets -- -D warnings
 
 test:
+    vx uv run python -m unittest discover -s scripts -p test_installers.py
     vx cargo test --workspace
 
 coverage:
