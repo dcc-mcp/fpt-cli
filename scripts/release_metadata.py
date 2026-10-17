@@ -37,6 +37,37 @@ def release_tag(config: dict[str, Any]) -> str:
     return f"{config['release']['tag_prefix']}{release_version(config)}"
 
 
+def verify_workspace_versions(config: dict[str, Any]) -> None:
+    workspace_path = Path(config["release"]["workspace_manifest_path"])
+    workspace = load_toml(str(workspace_path))["workspace"]
+    workspace_version = workspace["package"]["version"]
+    lock = load_toml(str(workspace_path.parent / "Cargo.lock"))
+    local_packages = [package for package in lock["package"] if "source" not in package]
+
+    for member in workspace["members"]:
+        paths = sorted((ROOT / workspace_path.parent).glob(member))
+        if not paths:
+            raise SystemExit(f"workspace member {member} has no package manifest")
+        for path in paths:
+            package = tomllib.loads((path / "Cargo.toml").read_text(encoding="utf-8"))["package"]
+            name = package["name"]
+            version = package["version"]
+            if isinstance(version, dict) and version.get("workspace") is True:
+                version = workspace_version
+            matches = [entry for entry in local_packages if entry["name"] == name]
+            if len(matches) != 1:
+                raise SystemExit(f"Cargo.lock must contain one local {name} package, found {len(matches)}")
+            if matches[0]["version"] != version:
+                raise SystemExit(
+                    f"Cargo.lock local package {name} version {matches[0]['version']} "
+                    f"does not match manifest version {version}"
+                )
+
+    manifest = json.loads((ROOT / ".release-please-manifest.json").read_text(encoding="utf-8"))
+    if manifest["."] != release_version(config):
+        raise SystemExit(".release-please-manifest.json version does not match the release package")
+
+
 def build_matrix(config: dict[str, Any]) -> dict[str, Any]:
     include = []
     for target in config["targets"]:
@@ -52,6 +83,7 @@ def build_matrix(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def verify_tag(config: dict[str, Any], tag_name: str) -> None:
+    verify_workspace_versions(config)
     expected = release_tag(config)
     if tag_name != expected:
         raise SystemExit(
@@ -61,7 +93,7 @@ def verify_tag(config: dict[str, Any], tag_name: str) -> None:
 
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
-        print("usage: release_metadata.py <version|tag|matrix|verify-tag> [tag]", file=sys.stderr)
+        print("usage: release_metadata.py <version|tag|matrix|verify-workspace|verify-tag> [tag]", file=sys.stderr)
         return 1
 
     config = load_distribution()
@@ -77,6 +109,11 @@ def main(argv: list[str]) -> int:
 
     if command == "matrix":
         print(json.dumps(build_matrix(config), separators=(",", ":")))
+        return 0
+
+    if command == "verify-workspace":
+        verify_workspace_versions(config)
+        print("verified workspace, lockfile, and release manifest versions")
         return 0
 
     if command == "verify-tag":
