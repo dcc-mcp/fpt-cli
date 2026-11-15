@@ -1,5 +1,100 @@
 # Changelog
 
+## [0.2.32](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.31...v0.2.32) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update clap to 4.6.4 ([abb0e8d](https://github.com/dcc-mcp/fpt-cli/commit/abb0e8d51d577f9a927d1bd0c4ba6e64a51c3f56))
+* **deps:** update clap to 4.6.4 ([0496b1c](https://github.com/dcc-mcp/fpt-cli/commit/0496b1c728859e8f98d7fcd85cb663821da447c6))
+* **deps:** update Tokio to 1.53.1 on current main ([90513e7](https://github.com/dcc-mcp/fpt-cli/commit/90513e7947bad5fff23b4f7dc5a7b506b52d1102))
+
+## [0.2.31](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.30...v0.2.31) (2026-10-17)
+
+
+### Bug Fixes
+
+* collapse checkpoint and filter guards ([b4c3206](https://github.com/dcc-mcp/fpt-cli/commit/b4c32068c6c9e9e80d4fe51ae3eeab73ba4c69f9))
+* collapse the upsert transport fixture guard ([5354540](https://github.com/dcc-mcp/fpt-cli/commit/53545401e7fe7999a5de6511f91c6138bc9ee6b7))
+* integrate minimum Rust checks with installer fixes ([bafccca](https://github.com/dcc-mcp/fpt-cli/commit/bafccca08b0591ab5b4c5e85332dcbb5b559a5cf))
+* resolve PowerShell latest release through web redirect ([2a8fc72](https://github.com/dcc-mcp/fpt-cli/commit/2a8fc7280377a5f0a95d0b2313e7b911f7998750))
+* resolve versioned release assets in installers ([d25c15e](https://github.com/dcc-mcp/fpt-cli/commit/d25c15e7ef06842893180f07a35abf52604e41b5))
+* validate the minimum supported Rust version ([6054135](https://github.com/dcc-mcp/fpt-cli/commit/605413582559066e2aa9d7eb72a2125b99c91a67))
+
+
+### Miscellaneous Chores
+
+* merge main into zip dependency update ([d44e648](https://github.com/dcc-mcp/fpt-cli/commit/d44e648cb7e1dfc631865fa2d934db77326d0bd6))
+
+## [0.2.30](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.29...v0.2.30) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update rust crate libc to v0.2.189 ([#125](https://github.com/dcc-mcp/fpt-cli/issues/125)) ([d22de6f](https://github.com/dcc-mcp/fpt-cli/commit/d22de6ffed366ae43302d42c01847d2d7fc9a6ee))
+
+## [0.2.29](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.28...v0.2.29) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** bump rand from 0.9.2 to 0.9.4 ([#126](https://github.com/dcc-mcp/fpt-cli/issues/126)) ([03651bf](https://github.com/dcc-mcp/fpt-cli/commit/03651bfd03cbc02b6689dd60df65a4148cbf98ff))
+
+## [0.2.28](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.27...v0.2.28) (2026-10-17)
+
+
+### Miscellaneous Chores
+
+* **deps:** update rust crate bitflags to v2.13.1 ([#127](https://github.com/dcc-mcp/fpt-cli/issues/127)) ([9a5c97e](https://github.com/dcc-mcp/fpt-cli/commit/9a5c97e91fa85296489e1e63740ef09859e0d639))
+
+## [0.2.27](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.26...v0.2.27) (2026-10-17)
+
+
+### Bug Fixes
+
+* **ci:** pin clawhub to 0.8.0 so sync sends the MIT-0 license acceptance ([#151](https://github.com/dcc-mcp/fpt-cli/issues/151)) ([6792746](https://github.com/dcc-mcp/fpt-cli/commit/67927461c5a341797e4a6ea06db982781cf94a8a))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump rustls-webpki from 0.103.10 to 0.103.13 ([#129](https://github.com/dcc-mcp/fpt-cli/issues/129)) ([e4c84fc](https://github.com/dcc-mcp/fpt-cli/commit/e4c84fc8c74ffb2b350e5bb7c14013ed3fd50829))
+* **deps:** update googleapis/release-please-action action to v4.4.1 ([#124](https://github.com/dcc-mcp/fpt-cli/issues/124)) ([d1e8793](https://github.com/dcc-mcp/fpt-cli/commit/d1e87939248ea5f3f530bed3c0490512afb26327))
+
+## [0.2.26](https://github.com/dcc-mcp/fpt-cli/compare/v0.2.25...v0.2.26) (2026-10-08)
+
+
+### Features
+
+* add schedule.work-day-rules-read endpoint integration ([#135](https://github.com/dcc-mcp/fpt-cli/issues/135)) ([482ce1f](https://github.com/dcc-mcp/fpt-cli/commit/482ce1f90c6d671555d9eaf8f70540443f764315))
+* add secure auth profiles ([76b8e88](https://github.com/dcc-mcp/fpt-cli/commit/76b8e887a7caa01000df0452d06b595eb75c3dea))
+* integrate REST API version and OpenAPI spec endpoints ([#132](https://github.com/dcc-mcp/fpt-cli/issues/132)) ([f1903eb](https://github.com/dcc-mcp/fpt-cli/commit/f1903ebaad6ca3b6719e0d1ad01b9965b3a3ab32))
+* integrate REST-based summarize and server-side batch API endpoints ([#137](https://github.com/dcc-mcp/fpt-cli/issues/137)) ([df323eb](https://github.com/dcc-mcp/fpt-cli/commit/df323eb39f9a1b4b053d29954c6a97f77ee1e3d0))
+* integrate webhook and subscription seat REST API endpoints ([#142](https://github.com/dcc-mcp/fpt-cli/issues/142)) ([1528f50](https://github.com/dcc-mcp/fpt-cli/commit/1528f50fa9e5bab19359524c3be4cc199923890b))
+* migrate entity revive to REST and add token refresh support ([#139](https://github.com/dcc-mcp/fpt-cli/issues/139)) ([4511624](https://github.com/dcc-mcp/fpt-cli/commit/451162415ef838a7c6cb751d9e8579fa9e24bac0))
+
+
+### Bug Fixes
+
+* allow clippy::double_must_use on async_trait transport methods ([#150](https://github.com/dcc-mcp/fpt-cli/issues/150)) ([fe04cdb](https://github.com/dcc-mcp/fpt-cli/commit/fe04cdb34a76aaf96e99a38d75b879953bf61872))
+* vendor secure profile backend ([cb60334](https://github.com/dcc-mcp/fpt-cli/commit/cb60334b0a10e7a0639affeef928e633bf82ea28))
+
+
+### Miscellaneous Chores
+
+* add #[must_use] annotations and improve type ergonomics ([#133](https://github.com/dcc-mcp/fpt-cli/issues/133)) ([f6303dd](https://github.com/dcc-mcp/fpt-cli/commit/f6303dd9ecde1565934bf0c13f823c8c0e05ab8b))
+* apply clippy pedantic and nursery lint fixes ([#134](https://github.com/dcc-mcp/fpt-cli/issues/134)) ([e7507b4](https://github.com/dcc-mcp/fpt-cli/commit/e7507b4076c257b3430b7a1bed70f9cc163131c9))
+* code cleanup — complete batch refactor, idiomatic let-else/if-let patterns ([1466cc6](https://github.com/dcc-mcp/fpt-cli/commit/1466cc6ff7e279bde6d9f309f71070d9adbbd0ef))
+* code cleanup — fix incomplete batch refactor, use idiomatic let-else/if-let patterns ([5a0de6c](https://github.com/dcc-mcp/fpt-cli/commit/5a0de6cb8ac4fb366f74bacbdd1c893403ac8a0d))
+* **deps:** update rust crate hyper to v1.9.0 ([#113](https://github.com/dcc-mcp/fpt-cli/issues/113)) ([5e2d339](https://github.com/dcc-mcp/fpt-cli/commit/5e2d339455ce4cebad2c5bf707627b5d17fa9273))
+* **deps:** update rust crate semver to v1.0.28 ([#121](https://github.com/dcc-mcp/fpt-cli/issues/121)) ([98e9ff0](https://github.com/dcc-mcp/fpt-cli/commit/98e9ff04040617d68230c063ad15e8218cfae02a))
+* drop default [settings] and refresh vx.lock ([#145](https://github.com/dcc-mcp/fpt-cli/issues/145)) ([a43774b](https://github.com/dcc-mcp/fpt-cli/commit/a43774bd7adebf7e1266d7527be70e79ecb1e017))
+* fix clippy pedantic lint warnings and improve doc formatting ([#138](https://github.com/dcc-mcp/fpt-cli/issues/138)) ([973425d](https://github.com/dcc-mcp/fpt-cli/commit/973425d2acdf233b6969a9fae100d38ca80fb3fa))
+* improve code quality with Display impls, PartialEq derives, and idiomatic patterns ([#144](https://github.com/dcc-mcp/fpt-cli/issues/144)) ([c8aa2a2](https://github.com/dcc-mcp/fpt-cli/commit/c8aa2a27b0d7c670c2304370aa45b6dae409e30b))
+* improve documentation and clean up minor code smells ([#136](https://github.com/dcc-mcp/fpt-cli/issues/136)) ([cb12ac1](https://github.com/dcc-mcp/fpt-cli/commit/cb12ac1634ee011780c35d31fb5ea298bcae1756))
+* let rustup own rust, raise the CI vx pin to 0.9.33 ([#148](https://github.com/dcc-mcp/fpt-cli/issues/148)) ([11b9729](https://github.com/dcc-mcp/fpt-cli/commit/11b9729c78dc4ae2ecb400a35598de0bdf9841ad))
+* move fpt cli to dcc mcp ([9c2e7e4](https://github.com/dcc-mcp/fpt-cli/commit/9c2e7e4a3be368c8799c622bfa970f39811b90f3))
+* **vx:** drop justfile-duplicated [scripts] entries ([#149](https://github.com/dcc-mcp/fpt-cli/issues/149)) ([152f017](https://github.com/dcc-mcp/fpt-cli/commit/152f0173648ba499dc6cb63e159b8a3018708df1))
+
 ## [0.2.25](https://github.com/loonghao/fpt-cli/compare/v0.2.24...v0.2.25) (2026-04-02)
 
 

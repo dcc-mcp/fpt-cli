@@ -11,8 +11,10 @@ mod schedule;
 mod schema;
 mod self_update;
 mod server;
+mod subscription;
 mod upload;
 mod user;
+mod webhook;
 mod work_schedule;
 
 use fpt_core::CommandSpec;
@@ -24,8 +26,12 @@ static COMMANDS: &[CommandSpec] = &[
     core::INSPECT_LIST_SPEC,
     // Auth
     auth::AUTH_TEST_SPEC,
+    auth::AUTH_LOGIN_SPEC,
+    auth::AUTH_LOGOUT_SPEC,
     // Server
     server::SERVER_INFO_SPEC,
+    server::SERVER_REST_VERSION_SPEC,
+    server::SERVER_OPENAPI_SPEC_SPEC,
     // Schema
     schema::SCHEMA_ENTITIES_SPEC,
     schema::SCHEMA_ENTITY_READ_SPEC,
@@ -67,6 +73,8 @@ static COMMANDS: &[CommandSpec] = &[
     entity::ENTITY_BATCH_UPSERT_SPEC,
     entity::ENTITY_BATCH_SUMMARIZE_SPEC,
     entity::ENTITY_BATCH_COUNT_SPEC,
+    entity::ENTITY_SUMMARIZE_REST_SPEC,
+    entity::ENTITY_BATCH_SERVER_SPEC,
     // Follow
     follow::ENTITY_FOLLOWERS_SPEC,
     follow::ENTITY_FOLLOW_SPEC,
@@ -85,6 +93,7 @@ static COMMANDS: &[CommandSpec] = &[
     hierarchy::HIERARCHY_EXPAND_SPEC,
     // Schedule
     schedule::SCHEDULE_WORK_DAY_RULES_SPEC,
+    schedule::SCHEDULE_WORK_DAY_RULES_READ_SPEC,
     schedule::SCHEDULE_WORK_DAY_RULES_UPDATE_SPEC,
     schedule::SCHEDULE_WORK_DAY_RULES_CREATE_SPEC,
     schedule::SCHEDULE_WORK_DAY_RULES_DELETE_SPEC,
@@ -106,6 +115,20 @@ static COMMANDS: &[CommandSpec] = &[
     preferences::PREFERENCES_GET_SPEC,
     preferences::PREFERENCES_UPDATE_SPEC,
     preferences::PREFERENCES_CUSTOM_ENTITY_SPEC,
+    // Webhook
+    webhook::WEBHOOK_HOOKS_LIST_SPEC,
+    webhook::WEBHOOK_HOOK_CREATE_SPEC,
+    webhook::WEBHOOK_HOOK_READ_SPEC,
+    webhook::WEBHOOK_HOOK_UPDATE_SPEC,
+    webhook::WEBHOOK_HOOK_DELETE_SPEC,
+    webhook::WEBHOOK_HOOK_TEST_SPEC,
+    webhook::WEBHOOK_DELIVERIES_LIST_SPEC,
+    webhook::WEBHOOK_DELIVERY_READ_SPEC,
+    webhook::WEBHOOK_DELIVERY_UPDATE_SPEC,
+    webhook::WEBHOOK_DELIVERY_REDELIVER_SPEC,
+    // Subscription seats
+    subscription::SUBSCRIPTION_USER_LIST_SPEC,
+    subscription::SUBSCRIPTION_USER_ASSIGN_SPEC,
     // Self-update & config
     self_update::SELF_UPDATE_SPEC,
     self_update::CONFIG_GET_SPEC,
@@ -114,10 +137,12 @@ static COMMANDS: &[CommandSpec] = &[
     self_update::CONFIG_CLEAR_SPEC,
 ];
 
+#[must_use]
 pub fn command_specs() -> &'static [CommandSpec] {
     COMMANDS
 }
 
+#[must_use]
 pub fn find_command_spec(name: &str) -> Option<&'static CommandSpec> {
     let normalized = normalize_command_name(name);
     COMMANDS.iter().find(|spec| spec.name == normalized)

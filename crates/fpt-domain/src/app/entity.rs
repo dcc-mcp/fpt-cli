@@ -141,7 +141,12 @@ where
     ) -> Result<Value> {
         validate_entity_type(entity)?;
         if dry_run {
-            return Ok(dry_run_response(plan_entity_revive(entity, id)));
+            let api_version = api_version_or_default(overrides.api_version.as_deref());
+            return Ok(dry_run_response(plan_entity_revive(
+                &api_version,
+                entity,
+                id,
+            )));
         }
 
         let config = ConnectionSettings::resolve(overrides)?;
@@ -342,12 +347,11 @@ fn build_count_payload(input: Option<Value>, filter_dsl: Option<String>) -> Resu
             let operator = parsed
                 .get("logical_operator")
                 .and_then(Value::as_str)
-                .map(|op| match op {
+                .map_or("all", |op| match op {
                     "and" => "all",
                     "or" => "any",
                     other => other,
-                })
-                .unwrap_or("all");
+                });
             let conditions = parsed.get("conditions").cloned().unwrap_or(json!([]));
             json!({
                 "filter_operator": operator,
@@ -376,31 +380,31 @@ fn validate_relationship_body(body: &Value) -> Result<()> {
             )
     })?;
 
-    if !object.contains_key("data") {
-        return Err(AppError::invalid_input(
+    if object.contains_key("data") {
+        Ok(())
+    } else {
+        Err(AppError::invalid_input(
             "relationship write body must contain a `data` field with an array of entity links",
         )
         .with_operation("validate_relationship_body")
         .with_missing_fields(["data"])
         .with_expected_shape(
             "a JSON object containing `data` (array of entity link objects with `type` and `id`)",
-        ));
+        ))
     }
-
-    Ok(())
 }
 
 /// Validate that the entity share body is a JSON object containing `entities` or `projects`.
 fn validate_share_body(body: &Value) -> Result<()> {
-    body.as_object().ok_or_else(|| {
-        AppError::invalid_input("entity share body must be a JSON object")
-            .with_operation("validate_share_body")
-            .with_expected_shape(
-                "a JSON object describing the share target (e.g. containing `entities` or project links)",
-            )
-    })?;
-
-    Ok(())
+    body.as_object()
+        .ok_or_else(|| {
+            AppError::invalid_input("entity share body must be a JSON object")
+                .with_operation("validate_share_body")
+                .with_expected_shape(
+                    "a JSON object describing the share target (e.g. containing `entities` or project links)",
+                )
+        })
+        .map(|_| ())
 }
 
 /// Validate that an entity type name is safe to use in a REST URL path.
@@ -411,7 +415,7 @@ fn validate_share_body(body: &Value) -> Result<()> {
 /// the URL builder in `RestTransport` never silently builds a malformed request.
 ///
 /// Control characters (anything below ASCII 0x20) are also rejected because
-/// they cannot appear in a valid ShotGrid entity type name and may indicate
+/// they cannot appear in a valid `ShotGrid` entity type name and may indicate
 /// a prompt-injection attempt.
 pub(crate) fn validate_entity_type(entity: &str) -> Result<()> {
     if entity.is_empty() {
@@ -430,7 +434,7 @@ pub(crate) fn validate_entity_type(entity: &str) -> Result<()> {
         .with_hint("Provide the plain entity type name without query parameters, for example `Shot` not `Shot?fields=code`."));
     }
 
-    if entity.chars().any(|c| (c as u32) < 0x20) {
+    if entity.chars().any(|c| c.is_ascii_control()) {
         return Err(AppError::invalid_input(format!(
             "entity type name `{entity}` contains control characters (below ASCII 0x20), which are not permitted"
         ))

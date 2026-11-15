@@ -89,7 +89,7 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.get",
             entity,
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
     }
@@ -125,7 +125,7 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.find",
             entity,
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
     }
@@ -168,7 +168,7 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.create",
             entity,
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
     }
@@ -223,7 +223,7 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.update",
             entity,
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
     }
@@ -312,22 +312,19 @@ where
                     }
 
                     // Look up whether an entity with this key value already exists.
-                    let key_value = match body.get(&key) {
-                        Some(v) => v.clone(),
-                        None => {
-                            let result = json!({
-                                "index": index,
-                                "ok": false,
-                                "action": "skipped",
-                                "request": body,
-                                "error": {
-                                    "code": "INVALID_INPUT",
-                                    "message": format!("upsert key field `{key}` is missing from item {}", index + 1),
-                                },
-                            });
-                            write_checkpoint(checkpoint_writer, &result);
-                            return result;
-                        }
+                    let Some(key_value) = body.get(&key).cloned() else {
+                        let result = json!({
+                            "index": index,
+                            "ok": false,
+                            "action": "skipped",
+                            "request": body,
+                            "error": {
+                                "code": "INVALID_INPUT",
+                                "message": format!("upsert key field `{key}` is missing from item {}", index + 1),
+                            },
+                        });
+                        write_checkpoint(checkpoint_writer, &result);
+                        return result;
                     };
 
                     // Build a find-one query for the key field.
@@ -407,8 +404,7 @@ where
                                         .get("id")
                                         .and_then(Value::as_u64);
                                     let id_display = existing_id
-                                        .map(|id| id.to_string())
-                                        .unwrap_or_else(|| "unknown".to_string());
+                                        .map_or_else(|| "unknown".to_string(), |id| id.to_string());
                                     let error = AppError::policy_blocked(format!(
                                         "entity with {key}={} already exists (id={id_display}); use --on-conflict skip or update to handle conflicts",
                                         body.get(&key).unwrap_or(&Value::Null)
@@ -425,25 +421,22 @@ where
                                     )
                                 }
                                 OnConflict::Update => {
-                                    let existing_id = match existing_entity
+                                    let Some(existing_id) = existing_entity
                                         .get("id")
                                         .and_then(Value::as_u64)
-                                    {
-                                        Some(id) => id,
-                                        None => {
-                                            let error = AppError::api(
-                                                "existing entity is missing `id` field",
-                                            )
-                                            .with_operation("entity_batch_upsert");
-                                            return batch_result_err(
-                                                index,
-                                                &error,
-                                                &[
-                                                    ("action", json!("error")),
-                                                    ("request", body),
-                                                ],
-                                            );
-                                        }
+                                    else {
+                                        let error = AppError::api(
+                                            "existing entity is missing `id` field",
+                                        )
+                                        .with_operation("entity_batch_upsert");
+                                        return batch_result_err(
+                                            index,
+                                            &error,
+                                            &[
+                                                ("action", json!("error")),
+                                                ("request", body),
+                                            ],
+                                        );
                                     };
                                     match transport
                                         .entity_update(config, entity, existing_id, &body)
@@ -562,7 +555,7 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.delete",
             entity,
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
     }
@@ -576,9 +569,10 @@ where
     ) -> Result<Value> {
         let ids = parse_batch_id_list_input(input)?;
         if dry_run {
+            let api_version = api_version_or_default(overrides.api_version.as_deref());
             let plans = ids
                 .iter()
-                .map(|&id| plan_entity_revive(entity, id))
+                .map(|&id| plan_entity_revive(&api_version, entity, id))
                 .collect::<Vec<_>>();
             return Ok(batch_dry_run_response("entity.batch.revive", entity, plans));
         }
@@ -605,7 +599,7 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.revive",
             entity,
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
     }
@@ -653,7 +647,7 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.find-one",
             entity,
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
     }
@@ -699,7 +693,7 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.summarize",
             "_multi",
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
     }
@@ -746,9 +740,25 @@ where
         Ok(batch_response_with_stats(
             "entity.batch.count",
             "_multi",
-            results,
+            &results,
             elapsed_ms(started_at),
         ))
+    }
+
+    /// Execute a server-side batch request via the REST `_batch` endpoint.
+    ///
+    /// Unlike the client-side batch commands that orchestrate multiple
+    /// individual REST calls, this sends a single transactional request to
+    /// `POST /api/{ver}/entity/_batch`.  The server executes all operations
+    /// atomically: either all succeed or all roll back.
+    pub async fn entity_batch_server(
+        &self,
+        overrides: ConnectionOverrides,
+        input: Value,
+    ) -> Result<Value> {
+        let config = ConnectionSettings::resolve(overrides)?;
+        let body = validate_batch_server_input(input)?;
+        self.transport.entity_batch_server(&config, &body).await
     }
 }
 
@@ -792,7 +802,7 @@ fn batch_result_err(index: usize, error: &AppError, extras: &[(&str, Value)]) ->
 fn batch_response_with_stats(
     operation: &str,
     entity: &str,
-    results: Vec<Value>,
+    results: &[Value],
     elapsed_ms: u64,
 ) -> Value {
     let failure_count = results
@@ -1139,20 +1149,18 @@ fn load_checkpoint_indices(path: &str) -> Result<HashSet<usize>> {
     let mut indices = HashSet::new();
 
     for line in reader.lines() {
-        let line = match line {
-            Ok(l) => l,
-            Err(_) => continue, // skip unreadable lines
+        let Ok(line) = line else {
+            continue; // skip unreadable lines
         };
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;
         }
-        if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
-            if let Some(idx) = value.get("index").and_then(Value::as_u64) {
-                if let Ok(i) = usize::try_from(idx) {
-                    indices.insert(i);
-                }
-            }
+        if let Ok(value) = serde_json::from_str::<Value>(trimmed)
+            && let Some(idx) = value.get("index").and_then(Value::as_u64)
+            && let Ok(i) = usize::try_from(idx)
+        {
+            indices.insert(i);
         }
         // Silently skip malformed lines so a partial last write doesn't block resume.
     }
@@ -1191,13 +1199,12 @@ fn open_checkpoint_writer(path: &str, resume: bool) -> Result<File> {
 /// checkpoint line is acceptable — the item will simply be re-processed on
 /// the next resume.
 fn write_checkpoint(writer: &Option<std::sync::Mutex<File>>, result: &Value) {
-    if let Some(mutex) = writer {
-        if let Ok(mut file) = mutex.lock() {
-            // serde_json::to_string won't fail for Value
-            if let Ok(line) = serde_json::to_string(result) {
-                let _ = writeln!(file, "{line}");
-            }
-        }
+    if let Some(mutex) = writer
+        && let Ok(mut file) = mutex.lock()
+        // serde_json::to_string won't fail for Value
+        && let Ok(line) = serde_json::to_string(result)
+    {
+        let _ = writeln!(file, "{line}");
     }
 }
 
@@ -1363,4 +1370,23 @@ fn parse_batch_count_input(input: Value) -> Result<Vec<Value>> {
     };
 
     Ok(items)
+}
+
+/// Validate the input for the server-side batch endpoint.
+///
+/// The body must be a JSON object; the server validates the detailed
+/// request structure (`requests` array, per-request entity/method, etc.).
+/// This function only rejects obviously malformed input so the CLI fails
+/// fast with a clear message.
+fn validate_batch_server_input(input: Value) -> Result<Value> {
+    if !input.is_object() {
+        return Err(
+            AppError::invalid_input("entity batch-server input must be a JSON object")
+                .with_operation("validate_batch_server_input")
+                .with_expected_shape(
+                    "a JSON object containing `requests` (array of server-side batch operation descriptors)",
+                ),
+        );
+    }
+    Ok(input)
 }

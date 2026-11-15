@@ -14,7 +14,7 @@ const HIERARCHY_EXPAND_EXAMPLES: &[&str] = &[
 ];
 
 const HIERARCHY_EXPAND_NOTES: &[&str] = &[
-    "Expand a specific node in the hierarchy tree using the ShotGrid hierarchy/expand endpoint",
+    "Expand a specific node in the hierarchy tree using the ShotGrid hierarchy/_expand endpoint",
     "Input must be a JSON body containing the `path` and optionally `entity_fields` for the expand request",
 ];
 

@@ -12,9 +12,9 @@ pub enum OutputFormatArg {
 impl From<OutputFormatArg> for OutputFormat {
     fn from(value: OutputFormatArg) -> Self {
         match value {
-            OutputFormatArg::Toon => OutputFormat::Toon,
-            OutputFormatArg::Json => OutputFormat::Json,
-            OutputFormatArg::PrettyJson => OutputFormat::PrettyJson,
+            OutputFormatArg::Toon => Self::Toon,
+            OutputFormatArg::Json => Self::Json,
+            OutputFormatArg::PrettyJson => Self::PrettyJson,
         }
     }
 }
@@ -29,9 +29,9 @@ pub enum AuthModeArg {
 impl From<AuthModeArg> for AuthMode {
     fn from(value: AuthModeArg) -> Self {
         match value {
-            AuthModeArg::Script => AuthMode::Script,
-            AuthModeArg::UserPassword => AuthMode::UserPassword,
-            AuthModeArg::SessionToken => AuthMode::SessionToken,
+            AuthModeArg::Script => Self::Script,
+            AuthModeArg::UserPassword => Self::UserPassword,
+            AuthModeArg::SessionToken => Self::SessionToken,
         }
     }
 }

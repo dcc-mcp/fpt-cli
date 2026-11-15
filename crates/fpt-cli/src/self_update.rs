@@ -14,7 +14,7 @@ use tar::Archive;
 use tempfile::tempdir;
 use zip::ZipArchive;
 
-const DEFAULT_REPOSITORY: &str = "loonghao/fpt-cli";
+const DEFAULT_REPOSITORY: &str = "dcc-mcp/fpt-cli";
 /// Environment variable for overriding the GitHub repository used by `self-update`.
 const ENV_FPT_UPDATE_REPOSITORY: &str = "FPT_UPDATE_REPOSITORY";
 const CHECKSUM_ASSET_NAME: &str = "fpt-checksums.txt";
@@ -25,7 +25,12 @@ const SUPPORTED_TARGETS: &[&str] = &[
     "aarch64-apple-darwin",
 ];
 /// Transport label used in error envelopes for GitHub API calls.
-const TRANSPORT_REST: &str = "rest";
+///
+/// Reuses the same value as [`fpt_domain::transport::TRANSPORT_REST`] but is
+/// defined locally because the domain constant is `pub(crate)` and `self_update`
+/// lives in a different crate.  If the label ever changes, a `const` assertion
+/// or shared public constant in `fpt_core` should replace both definitions.
+const TRANSPORT_GITHUB: &str = "github_api";
 
 #[derive(Debug, Clone, Copy)]
 enum ArchiveKind {
@@ -169,7 +174,7 @@ fn split_repository(repository: &str) -> Result<(String, String)> {
             .with_operation("split_repository")
             .with_invalid_field("repository")
             .with_received_value(repository)
-            .with_expected_shape("`owner/repo`, for example `loonghao/fpt-cli`")
+            .with_expected_shape("`owner/repo`, for example `dcc-mcp/fpt-cli`")
     };
 
     let (owner, repo) = repository.split_once('/').ok_or_else(bad_format)?;
@@ -338,7 +343,7 @@ async fn fetch_release(
                 "could not decode GitHub release metadata as JSON: {error}"
             ))
             .with_operation("fetch_release")
-            .with_transport(TRANSPORT_REST)
+            .with_transport(TRANSPORT_GITHUB)
             .with_expected_shape(
                 "a GitHub release JSON object with `tag_name`, `html_url`, and `assets`",
             )
@@ -349,8 +354,7 @@ fn parse_release_version(tag_name: &str) -> Result<Version> {
     let version = tag_name.strip_prefix('v').unwrap_or(tag_name);
     Version::parse(version).map_err(|error| {
         AppError::internal(format!(
-            "release tag `{}` is not a valid semantic version: {error}",
-            tag_name
+            "release tag `{tag_name}` is not a valid semantic version: {error}"
         ))
         .with_operation("parse_release_version")
     })
@@ -404,8 +408,7 @@ fn verify_checksum(checksums: &str, asset_name: &str, archive_bytes: &[u8]) -> R
         })
         .ok_or_else(|| {
             AppError::internal(format!(
-                "checksum file `{}` does not contain an entry for asset `{}`",
-                CHECKSUM_ASSET_NAME, asset_name
+                "checksum file `{CHECKSUM_ASSET_NAME}` does not contain an entry for asset `{asset_name}`"
             ))
             .with_operation("verify_checksum")
             .with_resource(CHECKSUM_ASSET_NAME)
@@ -415,8 +418,7 @@ fn verify_checksum(checksums: &str, asset_name: &str, archive_bytes: &[u8]) -> R
     let actual = format!("{:x}", Sha256::digest(archive_bytes));
     if actual != expected {
         return Err(AppError::network(format!(
-            "checksum verification failed for `{}`; expected `{}`, got `{}`",
-            asset_name, expected, actual
+            "checksum verification failed for `{asset_name}`; expected `{expected}`, got `{actual}`"
         ))
         .with_operation("verify_checksum")
         .with_resource(asset_name)
@@ -438,7 +440,7 @@ fn extract_binary(
     let destination = output_dir.join(target.binary_name);
     match target.archive_kind {
         ArchiveKind::TarGz => {
-            extract_tar_gz_binary(archive_path, target.binary_name, &destination)?
+            extract_tar_gz_binary(archive_path, target.binary_name, &destination)?;
         }
         ArchiveKind::Zip => extract_zip_binary(archive_path, target.binary_name, &destination)?,
     }
@@ -513,7 +515,7 @@ fn map_network_error(message: &str) -> impl FnOnce(reqwest::Error) -> AppError +
     move |error| {
         AppError::network(format!("{message}: {error}"))
             .with_operation("self_update")
-            .with_transport(TRANSPORT_REST)
+            .with_transport(TRANSPORT_GITHUB)
     }
 }
 

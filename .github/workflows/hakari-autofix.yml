@@ -1,0 +1,188 @@
+name: Hakari Autofix
+
+# `workspace-hack/Cargo.toml` is a generated artifact of the dependency graph.
+# A dependency bump that changes the feature graph leaves it stale, and `just ci`
+# then fails on its `hakari-check` step. This workflow regenerates the generated
+# files on bot dependency PRs, so a bump and its generated output land on the
+# same branch instead of silently rotting on main.
+#
+# Renovate's `postUpgradeTasks.commands` is deliberately not used: `allowedCommands`
+# is a global-only option, so the hosted Mend Renovate App cannot allowlist the
+# command and it would never run.
+#
+# Pushing needs HAKARI_AUTOFIX_TOKEN, and it has to be stored twice:
+#   * as an Actions secret   -> read by renovate and workflow_dispatch runs
+#   * as a Dependabot secret -> read by Dependabot runs
+# A push made with GITHUB_TOKEN does not start a new workflow run, so it would
+# move the PR head to a commit no CI run ever validates. Without the token this
+# job only reports the drift and leaves the branch untouched.
+#
+# The PAT is only ever exposed to the push command. Checkout runs with
+# `persist-credentials: false`, so nothing is written to `.git/config` where a
+# later step could read it: the steps after checkout execute the `justfile` of
+# the checked out ref, which is exactly the code that must not see the token.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or ref to regenerate workspace-hack on"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hakari-autofix-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_HTTP_TIMEOUT: "600"
+  CARGO_NET_RETRY: "10"
+  # Pinned: an unpinned cargo-hakari can flip `hakari-check` without any
+  # dependency change. Keep in sync with .github/workflows/ci.yml.
+  CARGO_HAKARI_VERSION: "0.9.38"
+
+jobs:
+  regenerate:
+    name: Regenerate workspace-hack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # In-repo bot branches only: never check out fork code with a write token.
+    # `user.login` is the PR author, so the job still runs when someone else
+    # pushes to a bot branch. `github.actor` would then be that pusher.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.fork == false &&
+       contains(fromJSON('["dependabot[bot]", "renovate[bot]"]'),
+                github.event.pull_request.user.login))
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.event.pull_request.head.ref }}
+          # Do not leave the token in .git/config: the steps below run the
+          # `justfile` of this ref. The PAT is passed to `git push` only.
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup vx
+        uses: loonghao/vx@v0.9.33
+        with:
+          version: "0.9.33"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # The action's restore-keys ignore `version`, so a cache entry written
+          # by an older vx still wins the restore and install.sh then skips the
+          # download, leaving the stale binary to run. The version pin only holds
+          # with the vx tool cache off.
+          cache: false
+
+      - name: Setup tools (vx)
+        run: vx setup
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install pinned cargo-hakari
+        run: vx cargo install cargo-hakari --locked --version "${CARGO_HAKARI_VERSION}"
+
+      - name: Check push credentials
+        id: creds
+        # Only the comparison result reaches the log, never the token itself.
+        run: echo "can_push=${{ secrets.HAKARI_AUTOFIX_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect workspace-hack drift
+        id: drift
+        run: |
+          if vx just hakari-check; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+            echo "workspace-hack is up to date."
+          else
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::workspace-hack is stale."
+          fi
+
+      - name: Regenerate and verify
+        id: regenerate
+        # No token in this step's env: the `just` recipes below come from the
+        # checked out ref, and step-level env reaches every child process.
+        if: steps.drift.outputs.drift == 'true' && steps.creds.outputs.can_push == 'true'
+        run: |
+          set -u
+
+          vx just hakari-generate
+
+          # Re-run the gate locally: never push a commit that does not satisfy
+          # the same commands `just ci` runs.
+          if ! vx just hakari-check; then
+            echo "::error::workspace-hack is still stale after regeneration; refusing to push."
+            exit 1
+          fi
+
+          if git diff --quiet -- Cargo.toml Cargo.lock workspace-hack crates; then
+            echo "::notice::Regeneration produced no file changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- Cargo.toml Cargo.lock workspace-hack crates
+          git commit -m "chore(hakari): regenerate workspace-hack"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push regenerated files
+        # This step runs no code from the checked out ref, only git, so it is
+        # the only place the PAT is exposed.
+        if: steps.regenerate.outputs.changed == 'true'
+        env:
+          TARGET_REF: ${{ github.event.pull_request.head.ref || inputs.ref }}
+          HAKARI_AUTOFIX_TOKEN: ${{ secrets.HAKARI_AUTOFIX_TOKEN }}
+        run: |
+          set -u
+
+          # Pushing with the PAT starts a new CI run on the pushed commit, so the
+          # new head is validated. The GITHUB_TOKEN fallback never reaches here.
+          if git -c "http.extraheader=AUTHORIZATION: bearer ${HAKARI_AUTOFIX_TOKEN}"               push origin "HEAD:refs/heads/${TARGET_REF}"; then
+            {
+              echo "Regenerated \`workspace-hack\` and pushed to \`${TARGET_REF}\`."
+              echo ""
+              echo "CI re-runs on the pushed commit, so the new head is validated."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "::warning::Detected workspace-hack drift but could not push to ${TARGET_REF}. Check that HAKARI_AUTOFIX_TOKEN is valid and that the branch is not protected; the drift still fails Quality Checks on the current head."
+          {
+            echo "### workspace-hack drift detected (push failed)"
+            echo ""
+            echo "Regenerated the files locally but could not push to \`${TARGET_REF}\`."
+            echo "The drift still fails \`Quality Checks\` on the current head, so nothing"
+            echo "is hidden. Run \`vx just hakari-generate\` and commit the result, or fix"
+            echo "the \`HAKARI_AUTOFIX_TOKEN\` configuration."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report drift without pushing
+        if: steps.drift.outputs.drift == 'true' && steps.creds.outputs.can_push != 'true'
+        run: |
+          echo "::warning::workspace-hack is stale, but HAKARI_AUTOFIX_TOKEN is not configured, so the branch was left untouched. Store it as both an Actions secret and a Dependabot secret to let this workflow push the fix."
+          {
+            echo "### workspace-hack drift detected (not pushed)"
+            echo ""
+            echo "\`HAKARI_AUTOFIX_TOKEN\` is not configured, so this branch was left"
+            echo "untouched: a push made with \`GITHUB_TOKEN\` would move the PR head"
+            echo "without starting a new CI run, which hides the failing check instead"
+            echo "of fixing it."
+            echo ""
+            echo "Run \`vx just hakari-generate\` and commit the result, or store the token"
+            echo "as both an Actions secret and a Dependabot secret."
+          } >> "$GITHUB_STEP_SUMMARY"

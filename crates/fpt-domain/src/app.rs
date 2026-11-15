@@ -11,9 +11,11 @@ mod query_helpers;
 mod schedule;
 mod schema;
 mod server;
+mod subscription;
 mod summarize;
 mod upload;
 mod user;
+mod webhook;
 mod work_schedule;
 
 use std::env;
@@ -25,7 +27,7 @@ use serde_json::{Value, json};
 use crate::capability::{command_specs, find_command_spec};
 use crate::transport::{RestTransport, ShotgridTransport};
 
-/// Top-level application facade that orchestrates ShotGrid/FPT operations.
+/// Top-level application facade that orchestrates `ShotGrid`/FPT operations.
 ///
 /// `App` is generic over its transport layer (`T: ShotgridTransport`) so that
 /// production code can use [`RestTransport`] while tests supply a recording or
@@ -47,7 +49,7 @@ impl<T> App<T>
 where
     T: ShotgridTransport,
 {
-    pub fn new(transport: T) -> Self {
+    pub const fn new(transport: T) -> Self {
         Self { transport }
     }
 
@@ -133,8 +135,9 @@ fn batch_concurrency_limit() -> usize {
             .ok()
             .and_then(|value| value.parse::<usize>().ok())
             .filter(|value| *value > 0)
-            .map(|value| value.min(MAX_BATCH_CONCURRENCY))
-            .unwrap_or(DEFAULT_BATCH_CONCURRENCY)
+            .map_or(DEFAULT_BATCH_CONCURRENCY, |value| {
+                value.min(MAX_BATCH_CONCURRENCY)
+            })
     })
 }
 

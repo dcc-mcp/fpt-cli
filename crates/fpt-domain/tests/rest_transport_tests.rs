@@ -212,24 +212,6 @@ async fn note_threads_use_documented_note_thread_endpoint() {
 #[tokio::test]
 async fn rpc_methods_use_expected_paths_and_payloads() {
     let server = MockServer::start();
-    let revive = server.mock(|when, then| {
-        when.method(POST).path("/api3/json").json_body(json!({
-            "method_name": "revive",
-            "params": [
-                {
-                    "script_name": "openclaw",
-                    "script_key": "secret-key"
-                },
-                {
-                    "type": "Shot",
-                    "id": 860
-                }
-            ]
-        }));
-        then.status(200)
-            .header("content-type", "application/json")
-            .json_body(json!({"results": true}));
-    });
     let work_schedule = server.mock(|when, then| {
         when.method(POST).path("/api3/json").json_body(json!({
             "method_name": "work_schedule_read",
@@ -294,10 +276,6 @@ async fn rpc_methods_use_expected_paths_and_payloads() {
     let transport = RestTransport::default();
     let config = script_config(&server);
 
-    let revive_response = transport
-        .entity_revive(&config, "Shot", 860)
-        .await
-        .expect("entity revive succeeds");
     let work_schedule_response = transport
         .work_schedule_read(
             &config,
@@ -328,12 +306,195 @@ async fn rpc_methods_use_expected_paths_and_payloads() {
         .await
         .expect("entity summarize succeeds");
 
-    assert_eq!(revive.calls(), 1);
     assert_eq!(work_schedule.calls(), 1);
     assert_eq!(summarize.calls(), 1);
-    assert_eq!(revive_response, json!(true));
     assert_eq!(work_schedule_response["2026-03-16"]["working"], true);
     assert_eq!(summarize_response["summaries"]["id"]["record_count"], 3);
+}
+
+// --- Entity revive now uses REST POST ?revive=true ---
+
+#[tokio::test]
+async fn entity_revive_uses_rest_post_with_revive_query_param() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let revive = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/entity/shots/860")
+            .query_param("revive", "true")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"type": "Shot", "id": 860}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .entity_revive(&config, "Shot", 860)
+        .await
+        .expect("entity revive succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(revive.calls(), 1);
+    assert_eq!(response["data"]["id"], 860);
+}
+
+// --- Token refresh lifecycle ---
+
+#[tokio::test]
+async fn token_refresh_is_attempted_when_access_token_expires() {
+    let server = MockServer::start();
+
+    // First auth returns a short-lived token WITH a refresh_token.
+    let initial_auth = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/auth/access_token")
+            .body_includes("grant_type=client_credentials");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "access_token": "token-short",
+                "token_type": "Bearer",
+                "expires_in": 1,
+                "refresh_token": "refresh-abc"
+            }));
+    });
+
+    // Refresh grant returns a new long-lived token.
+    let refresh_auth = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/auth/access_token")
+            .body_includes("grant_type=refresh_token")
+            .body_includes("refresh_token=refresh-abc");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "access_token": "token-refreshed",
+                "token_type": "Bearer",
+                "expires_in": 3600
+            }));
+    });
+
+    // Schema mock for the first call (using short-lived token).
+    let schema_first = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/schema")
+            .header("authorization", "Bearer token-short");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": ["Shot"]}));
+    });
+
+    // Schema mock for the second call (using refreshed token).
+    let schema_refreshed = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/schema")
+            .header("authorization", "Bearer token-refreshed");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": ["Asset"]}));
+    });
+
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    // First call triggers credential auth, stores token with expires_in=1.
+    let first_response = transport
+        .schema_entities(&config)
+        .await
+        .expect("first schema call succeeds");
+    assert_eq!(first_response["data"][0], "Shot");
+
+    // Wait for the 1-second effective TTL to expire.
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+
+    // Second call: cached token expired → try refresh → get "token-refreshed".
+    let second_response = transport
+        .schema_entities(&config)
+        .await
+        .expect("schema entities via refreshed token succeeds");
+
+    assert_eq!(
+        initial_auth.calls(),
+        1,
+        "credential auth should happen once"
+    );
+    assert_eq!(refresh_auth.calls(), 1, "refresh grant should happen once");
+    assert_eq!(schema_first.calls(), 1);
+    assert_eq!(schema_refreshed.calls(), 1);
+    assert_eq!(second_response["data"][0], "Asset");
+}
+
+#[tokio::test]
+async fn token_refresh_falls_back_to_credential_auth_on_rejection() {
+    let server = MockServer::start();
+
+    // Auth always returns a short-lived token WITH a refresh_token.
+    // We allow multiple calls since the fallback will re-do credential auth.
+    let credential_auth = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/auth/access_token")
+            .body_includes("grant_type=client_credentials");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "access_token": "token-short",
+                "token_type": "Bearer",
+                "expires_in": 1,
+                "refresh_token": "refresh-expired"
+            }));
+    });
+
+    // Refresh grant is REJECTED (e.g., expired refresh token).
+    let refresh_rejected = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/auth/access_token")
+            .body_includes("grant_type=refresh_token");
+        then.status(401)
+            .header("content-type", "application/json")
+            .json_body(json!({"errors": ["Refresh token expired"]}));
+    });
+
+    // Schema endpoint using the short-lived token.
+    let _schema = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/schema")
+            .header("authorization", "Bearer token-short");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": ["Shot"]}));
+    });
+
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    // First call triggers credential auth.
+    let _ = transport
+        .schema_entities(&config)
+        .await
+        .expect("first schema call succeeds");
+
+    // Wait for the token to expire.
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+
+    // Second call: refresh attempted → rejected → falls back to credential auth.
+    let response = transport
+        .schema_entities(&config)
+        .await
+        .expect("schema entities via fallback credential auth succeeds");
+
+    assert_eq!(
+        credential_auth.calls(),
+        2,
+        "credential auth should be called twice (initial + fallback)"
+    );
+    assert_eq!(
+        refresh_rejected.calls(),
+        1,
+        "refresh should be attempted once"
+    );
+    assert_eq!(response["data"][0], "Shot");
 }
 
 #[tokio::test]
@@ -1815,7 +1976,7 @@ async fn hierarchy_expand_uses_expected_post_path() {
     let auth = mock_auth(&server);
     let hierarchy_expand = server.mock(|when, then| {
         when.method(POST)
-            .path("/api/v1.1/hierarchy/expand")
+            .path("/api/v1.1/hierarchy/_expand")
             .header("authorization", "Bearer token-123");
         then.status(200)
             .header("content-type", "application/json")
@@ -1888,6 +2049,31 @@ async fn schedule_work_day_rules_update_uses_expected_put_path() {
     assert_eq!(auth.calls(), 1);
     assert_eq!(rule_update.calls(), 1);
     assert_eq!(response["ok"], true);
+}
+
+#[tokio::test]
+async fn schedule_work_day_rules_read_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let rule = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/schedule/work_day_rules/42")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": 42, "type": "WorkDayRule"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .schedule_work_day_rules_read(&config, 42)
+        .await
+        .expect("schedule_work_day_rules_read succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(rule.calls(), 1);
+    assert_eq!(response["data"]["id"], 42);
 }
 
 // ---------------------------------------------------------------
@@ -2034,4 +2220,527 @@ async fn thumbnail_upload_uses_expected_put_path() {
     assert_eq!(auth.calls(), 1);
     assert_eq!(thumb_upload.calls(), 1);
     assert_eq!(response["upload_url"], "https://sg-media.com/upload/thumb");
+}
+
+// ---------------------------------------------------------------
+// REST API version endpoint (unauthenticated)
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn rest_api_version_uses_expected_get_path_no_auth() {
+    let server = MockServer::start();
+    let version_endpoint = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/")
+            .header("accept", "application/json");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "data": {
+                    "shotgun_version": "v8.40.0.0",
+                    "api_version": "v1.1"
+                }
+            }));
+    });
+    let transport = RestTransport::default();
+
+    let response = transport
+        .rest_api_version(&server.base_url(), "v1.1")
+        .await
+        .expect("rest_api_version succeeds");
+
+    assert_eq!(version_endpoint.calls(), 1);
+    assert_eq!(response["data"]["api_version"], "v1.1");
+    assert_eq!(response["data"]["shotgun_version"], "v8.40.0.0");
+}
+
+// ---------------------------------------------------------------
+// OpenAPI spec endpoint (unauthenticated) — JSON format
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn openapi_spec_json_uses_expected_get_path_no_auth() {
+    let server = MockServer::start();
+    let spec_endpoint = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/spec.json")
+            .header("accept", "application/json");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "openapi": "3.0.0",
+                "info": {"title": "ShotGrid REST API", "version": "1.1"}
+            }));
+    });
+    let transport = RestTransport::default();
+
+    let response = transport
+        .openapi_spec(&server.base_url(), "v1.1", "json")
+        .await
+        .expect("openapi_spec json succeeds");
+
+    assert_eq!(spec_endpoint.calls(), 1);
+    assert_eq!(response["openapi"], "3.0.0");
+    assert_eq!(response["info"]["title"], "ShotGrid REST API");
+}
+
+// ---------------------------------------------------------------
+// OpenAPI spec endpoint (unauthenticated) — YAML format
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn openapi_spec_yaml_wraps_response_in_json_envelope() {
+    let server = MockServer::start();
+    let spec_endpoint = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/spec.yaml")
+            .header("accept", "application/x-yaml");
+        then.status(200)
+            .header("content-type", "application/x-yaml")
+            .body("openapi: '3.0.0'\ninfo:\n  title: ShotGrid REST API\n  version: '1.1'\n");
+    });
+    let transport = RestTransport::default();
+
+    let response = transport
+        .openapi_spec(&server.base_url(), "v1.1", "yaml")
+        .await
+        .expect("openapi_spec yaml succeeds");
+
+    assert_eq!(spec_endpoint.calls(), 1);
+    assert_eq!(response["format"], "yaml");
+    assert!(
+        response["content"]
+            .as_str()
+            .unwrap()
+            .contains("openapi: '3.0.0'")
+    );
+}
+
+// ---------------------------------------------------------------
+// REST summarize endpoint (_summarize)
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn entity_summarize_rest_uses_expected_post_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let summarize = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/entity/shots/_summarize")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({
+                "summary_fields": [{"field": "id", "type": "count"}],
+                "filters": [["sg_status_list", "is", "ip"]]
+            }));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "data": {
+                    "summaries": {"id": 42},
+                    "groups": []
+                }
+            }));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .entity_summarize_rest(
+            &config,
+            "Shot",
+            &json!({
+                "summary_fields": [{"field": "id", "type": "count"}],
+                "filters": [["sg_status_list", "is", "ip"]]
+            }),
+        )
+        .await
+        .expect("entity_summarize_rest succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(summarize.calls(), 1);
+    assert_eq!(response["data"]["summaries"]["id"], 42);
+}
+
+// ---------------------------------------------------------------
+// Server-side batch endpoint (_batch)
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn entity_batch_server_uses_expected_post_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let batch = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/entity/_batch")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({
+                "requests": [
+                    {
+                        "request_type": "create",
+                        "entity": "Shot",
+                        "data": {"code": "shot_010", "project": {"type": "Project", "id": 1}}
+                    }
+                ]
+            }));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({
+                "data": [
+                    {"id": 999, "type": "Shot", "attributes": {"code": "shot_010"}}
+                ]
+            }));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .entity_batch_server(
+            &config,
+            &json!({
+                "requests": [
+                    {
+                        "request_type": "create",
+                        "entity": "Shot",
+                        "data": {"code": "shot_010", "project": {"type": "Project", "id": 1}}
+                    }
+                ]
+            }),
+        )
+        .await
+        .expect("entity_batch_server succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(batch.calls(), 1);
+    assert_eq!(response["data"][0]["type"], "Shot");
+    assert_eq!(response["data"][0]["id"], 999);
+}
+
+// ---------------------------------------------------------------
+// Webhooks
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn webhook_hooks_list_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let hooks = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/webhook/hooks")
+            .query_param("status", "active")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": [{"id": "hook-uuid"}]}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_hooks_list(&config, &[("status".to_string(), "active".to_string())])
+        .await
+        .expect("webhook_hooks_list succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(hooks.calls(), 1);
+    assert_eq!(response["data"][0]["id"], "hook-uuid");
+}
+
+#[tokio::test]
+async fn webhook_hook_create_posts_to_hooks_collection() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let create = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/webhook/hooks")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({
+                "event_type": "shotgrid.entity.Shot.change",
+                "url": "https://example.com/hook"
+            }));
+        then.status(201)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "new-hook"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+    let body = json!({
+        "event_type": "shotgrid.entity.Shot.change",
+        "url": "https://example.com/hook"
+    });
+
+    let response = transport
+        .webhook_hook_create(&config, &body)
+        .await
+        .expect("webhook_hook_create succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(create.calls(), 1);
+    assert_eq!(response["data"]["id"], "new-hook");
+}
+
+#[tokio::test]
+async fn webhook_hook_read_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let hook = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "9f1c-hook"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_hook_read(&config, "9f1c-hook")
+        .await
+        .expect("webhook_hook_read succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(hook.calls(), 1);
+    assert_eq!(response["data"]["id"], "9f1c-hook");
+}
+
+#[tokio::test]
+async fn webhook_hook_update_uses_expected_put_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let update = server.mock(|when, then| {
+        when.method(PUT)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({"url": "https://example.com/updated"}));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "9f1c-hook"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_hook_update(
+            &config,
+            "9f1c-hook",
+            &json!({"url": "https://example.com/updated"}),
+        )
+        .await
+        .expect("webhook_hook_update succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(update.calls(), 1);
+    assert!(response.get("data").is_some());
+}
+
+#[tokio::test]
+async fn webhook_hook_delete_uses_expected_delete_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let delete = server.mock(|when, then| {
+        when.method(DELETE)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook")
+            .header("authorization", "Bearer token-123");
+        then.status(204);
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    transport
+        .webhook_hook_delete(&config, "9f1c-hook")
+        .await
+        .expect("webhook_hook_delete succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(delete.calls(), 1);
+}
+
+#[tokio::test]
+async fn webhook_hook_test_connection_posts_to_test_connection_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let test = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook/test_connection")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"status": "ok"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_hook_test_connection(&config, "9f1c-hook")
+        .await
+        .expect("webhook_hook_test_connection succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(test.calls(), 1);
+    assert_eq!(response["data"]["status"], "ok");
+}
+
+#[tokio::test]
+async fn webhook_deliveries_list_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let deliveries = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/webhook/hooks/9f1c-hook/deliveries")
+            .query_param("status", "failed")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": [{"id": "delivery-1"}]}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_deliveries_list(
+            &config,
+            "9f1c-hook",
+            &[("status".to_string(), "failed".to_string())],
+        )
+        .await
+        .expect("webhook_deliveries_list succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(deliveries.calls(), 1);
+    assert_eq!(response["data"][0]["id"], "delivery-1");
+}
+
+#[tokio::test]
+async fn webhook_delivery_read_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let delivery = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/webhook/deliveries/delivery-1")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "delivery-1", "status": "failed"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_delivery_read(&config, "delivery-1")
+        .await
+        .expect("webhook_delivery_read succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(delivery.calls(), 1);
+    assert_eq!(response["data"]["status"], "failed");
+}
+
+#[tokio::test]
+async fn webhook_delivery_update_uses_expected_put_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let update = server.mock(|when, then| {
+        when.method(PUT)
+            .path("/api/v1.1/webhook/deliveries/delivery-1")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({"acknowledgement": "reviewed"}));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"id": "delivery-1"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_delivery_update(
+            &config,
+            "delivery-1",
+            &json!({"acknowledgement": "reviewed"}),
+        )
+        .await
+        .expect("webhook_delivery_update succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(update.calls(), 1);
+    assert_eq!(response["data"]["id"], "delivery-1");
+}
+
+#[tokio::test]
+async fn webhook_delivery_redeliver_posts_to_redeliver_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let redeliver = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/webhook/deliveries/delivery-1/redeliver")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"status": "pending"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .webhook_delivery_redeliver(&config, "delivery-1")
+        .await
+        .expect("webhook_delivery_redeliver succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(redeliver.calls(), 1);
+    assert_eq!(response["data"]["status"], "pending");
+}
+
+// ---------------------------------------------------------------
+// Subscription seats
+// ---------------------------------------------------------------
+
+#[tokio::test]
+async fn subscription_user_list_uses_expected_get_path() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let subscriptions = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1.1/subscription_seat/user_subscriptions")
+            .header("authorization", "Bearer token-123");
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"1554": "standard"}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .subscription_user_list(&config)
+        .await
+        .expect("subscription_user_list succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(subscriptions.calls(), 1);
+    assert_eq!(response["data"]["1554"], "standard");
+}
+
+#[tokio::test]
+async fn subscription_user_assign_posts_expected_body() {
+    let server = MockServer::start();
+    let auth = mock_auth(&server);
+    let assign = server.mock(|when, then| {
+        when.method(POST)
+            .path("/api/v1.1/subscription_seat/user_subscriptions")
+            .header("authorization", "Bearer token-123")
+            .json_body(json!({"1554": "standard", "1588": "trial"}));
+        then.status(200)
+            .header("content-type", "application/json")
+            .json_body(json!({"data": {"updated": 2}}));
+    });
+    let transport = RestTransport::default();
+    let config = script_config(&server);
+
+    let response = transport
+        .subscription_user_assign(&config, &json!({"1554": "standard", "1588": "trial"}))
+        .await
+        .expect("subscription_user_assign succeeds");
+
+    assert_eq!(auth.calls(), 1);
+    assert_eq!(assign.calls(), 1);
+    assert_eq!(response["data"]["updated"], 2);
 }

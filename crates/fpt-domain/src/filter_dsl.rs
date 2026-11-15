@@ -8,7 +8,7 @@ enum LogicalOp {
 }
 
 impl LogicalOp {
-    fn as_str(&self) -> &'static str {
+    const fn as_str(&self) -> &'static str {
         match self {
             Self::And => "and",
             Self::Or => "or",
@@ -25,10 +25,14 @@ enum Expr {
     },
     Logical {
         op: LogicalOp,
-        conditions: Vec<Expr>,
+        conditions: Vec<Self>,
     },
 }
 
+/// Parse a filter DSL expression into a ShotGrid-compatible filter object.
+///
+/// Returns a JSON value containing `logical_operator` and `conditions` suitable
+/// for use in ShotGrid REST `_search` request bodies.
 pub fn parse_filter_dsl(input: &str) -> Result<Value> {
     let source = input.trim();
     if source.is_empty() {
@@ -249,7 +253,7 @@ impl Parser {
 
     /// Parse a JSON object literal `{...}` for use as an entity-link value.
     ///
-    /// Supports the ShotGrid entity-link shorthand:
+    /// Supports the `ShotGrid` entity-link shorthand:
     ///   `project is {"type": "Project", "id": 123}`
     fn parse_object(&mut self) -> Result<Value> {
         self.expect_char('{', "opening `{` of object")?;
@@ -264,7 +268,7 @@ impl Parser {
             self.skip_whitespace();
             // key must be a quoted string
             let key = match self.peek_char() {
-                Some('"') | Some('\'') => self.parse_string()?,
+                Some('"' | '\'') => self.parse_string()?,
                 _ => {
                     return self.error(
                         "JSON object keys must be quoted strings, e.g. {\"type\": \"Project\", \"id\": 123}",
@@ -517,10 +521,10 @@ impl Parser {
     }
 }
 
-fn is_identifier_start(ch: char) -> bool {
+const fn is_identifier_start(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphabetic()
 }
 
-fn is_identifier_continue(ch: char) -> bool {
+const fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
 }

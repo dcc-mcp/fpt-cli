@@ -43,6 +43,8 @@
 
 项目中的所有环境都应通过 **`vx`** 管理，命令集合通过仓库里的 **`justfile`** 暴露。
 
+从源码构建需要 **Rust 1.88.0 或更高版本**。最低 Rust 版本 CI 矩阵会读取 workspace 的 `rust-version`，并检查 Linux、macOS 和 Windows。**使用预构建二进制不需要安装 Rust。**
+
 
 ```bash
 vx setup
@@ -61,12 +63,12 @@ vx just capabilities
 可通过 HTTPS 直接安装最新版本：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/loonghao/fpt-cli/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/dcc-mcp/fpt-cli/main/scripts/install.sh | sh
 
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/loonghao/fpt-cli/main/scripts/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/dcc-mcp/fpt-cli/main/scripts/install.ps1 | iex"
 
 ```
 
@@ -160,6 +162,7 @@ CLI 默认优先使用 `FPT_*` 前缀；当 `FPT_*` 缺失时，也支持回退�
 - `FPT_PASSWORD` / `SG_PASSWORD`
 - `FPT_AUTH_TOKEN` / `SG_AUTH_TOKEN`：站点启用 2FA 时可选
 - `FPT_SESSION_TOKEN` / `SG_SESSION_TOKEN`
+- `FPT_PROFILE` / `SG_PROFILE`：由 `fpt auth login` 创建的安全本地凭据 profile
 - `FPT_API_VERSION` / `SG_API_VERSION`（可选，默认 `v1.1`）
 
 ### 认证模式
@@ -167,6 +170,20 @@ CLI 默认优先使用 `FPT_*` 前缀；当 `FPT_*` 缺失时，也支持回退�
 - **script**：使用 `script_name + script_key` 走 `client_credentials`
 - **user_password**：使用 `username + password` 走 `password` grant
 - **session_token**：使用已有 `session_token` 走 `session_token` grant
+
+### 安全本地用户 Profile（Agent 推荐）
+
+对于 Autodesk Identity/Oxygen 站点，在用户工作站创建 profile。`--open-browser` 会打开 FPT
+站点供用户登录并完成所需的 PAT 配置；随后仅在本地终端读取敏感信息，并将其保存到操作系统凭据库。
+
+```bash
+fpt auth login --profile gamedemo --site https://gamedemo.shotgrid.autodesk.com \
+  --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile gamedemo
+fpt auth logout --profile gamedemo
+```
+
+Agent 和适配器只接收 `FPT_PROFILE=gamedemo`，不会获得密码、PAT 或 session token。
 
 如果没有显式传入 `--auth-mode`，CLI 会基于已有输入自动推断：
 
@@ -186,6 +203,9 @@ fpt inspect list --output json
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode script --script-name bot --script-key xxx
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode user-password --username user@example.com --password secret
 fpt auth test --site https://example.shotgrid.autodesk.com --auth-mode session-token --session-token xxx
+fpt auth login --profile gamedemo --site https://gamedemo.shotgrid.autodesk.com --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile gamedemo
+fpt auth logout --profile gamedemo
 
 # 服务器
 fpt server info --site ...
@@ -278,6 +298,22 @@ fpt preferences custom-entity --input '{"entity_type":"CustomEntity01"}' --site 
 
 # 许可证
 fpt license get --site ...
+
+# Webhook
+fpt webhook hooks-list --site ...
+fpt webhook hook-create --input '{"event_type":"shotgrid.entity.Shot.change","url":"https://example.com/hook"}' --site ...
+fpt webhook hook-read 9f1c2b7e --site ...
+fpt webhook hook-update 9f1c2b7e --input '{"url":"https://example.com/updated"}' --site ...
+fpt webhook hook-delete 9f1c2b7e --site ...
+fpt webhook hook-test 9f1c2b7e --site ...
+fpt webhook deliveries-list 9f1c2b7e --input '{"status":"failed"}' --site ...
+fpt webhook delivery-read 4a2d9f10 --site ...
+fpt webhook delivery-update 4a2d9f10 --input '{"acknowledgement":"reviewed"}' --site ...
+fpt webhook delivery-redeliver 4a2d9f10 --site ...
+
+# 订阅席位
+fpt subscription user-list --site ...
+fpt subscription user-assign --input '{"1554":"standard","1588":"trial"}' --site ...
 
 # 上传 / 下载 / 缩略图
 fpt upload url Shot 123 sg_uploaded_movie movie.mp4 --site ...

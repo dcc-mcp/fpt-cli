@@ -26,7 +26,7 @@ pub(crate) const TRANSPORT_REST: &str = "rest";
 /// Transport label for the legacy JSON-RPC API surface.
 const TRANSPORT_RPC: &str = "rpc";
 
-/// Custom `Content-Type` header required by the ShotGrid REST `_search`
+/// Custom `Content-Type` header required by the `ShotGrid` REST `_search`
 /// endpoint.  Using a named constant avoids scattering the vendor media-type
 /// across multiple call sites.
 const SHOTGRID_SEARCH_CONTENT_TYPE: &str = "application/vnd+shotgun.api3_hash+json";
@@ -45,12 +45,18 @@ const TOKEN_CACHE_POISONED: &str = "token cache is poisoned";
 /// the token is refreshed before it actually expires on the server.
 const TOKEN_EXPIRY_MARGIN_SECS: u64 = 30;
 
+/// Query-string and search-body parameters for entity find operations.
+///
+/// When `search` is `Some`, the find request uses the `ShotGrid` REST `_search`
+/// endpoint (POST with a vendor content type).  Otherwise a standard GET with
+/// query-string filters is used.
 #[derive(Debug, Clone, Default)]
 pub struct FindParams {
     pub query: Vec<(String, String)>,
     pub search: Option<Value>,
 }
 
+/// Parameters for requesting a pre-signed upload URL from `ShotGrid`.
 #[derive(Debug, Clone, Copy)]
 pub struct UploadUrlRequest<'a> {
     pub entity: &'a str,
@@ -61,6 +67,10 @@ pub struct UploadUrlRequest<'a> {
     pub multipart_upload: bool,
 }
 
+/// Serializable description of an HTTP request that *would* be made.
+///
+/// Returned by `--dry-run` so agents and operators can inspect the planned
+/// request (method, path, body, risk level) without actually executing it.
 #[derive(Debug, Clone, Serialize)]
 pub struct RequestPlan {
     pub transport: &'static str,
@@ -90,9 +100,9 @@ struct CachedAccessToken {
     expires_at: Option<Instant>,
 }
 
-/// Abstraction over the ShotGrid/FPT network transport layer.
+/// Abstraction over the `ShotGrid`/FPT network transport layer.
 ///
-/// Each method corresponds to a single ShotGrid API operation.  The default
+/// Each method corresponds to a single `ShotGrid` API operation.  The default
 /// production implementation is [`RestTransport`], which speaks both the REST
 /// API and the legacy JSON-RPC surface.  Test code can supply a recording or
 /// stub transport by implementing this trait.
@@ -393,6 +403,123 @@ pub trait ShotgridTransport {
         config: &ConnectionSettings,
         body: &Value,
     ) -> Result<Value>;
+    /// Fetch the REST API version information from the base endpoint.
+    ///
+    /// This is an unauthenticated endpoint (`GET /api/{version}/`) that returns
+    /// the server and REST API version metadata.
+    async fn rest_api_version(&self, site: &str, api_version: &str) -> Result<Value>;
+    /// Download the OpenAPI specification for the `ShotGrid` REST API.
+    ///
+    /// This is an unauthenticated endpoint (`GET /api/{version}/spec.{format}`)
+    /// that returns the OpenAPI v3 spec in the requested format (json or yaml).
+    async fn openapi_spec(&self, site: &str, api_version: &str, format: &str) -> Result<Value>;
+
+    /// Summarize entity records using the REST `_summarize` endpoint.
+    ///
+    /// This is the REST-native counterpart to the legacy RPC `summarize` method.
+    /// It supports summary_fields, filters, grouping, and
+    /// additional_filter_presets via `POST /api/{ver}/entity/{entity}/_summarize`.
+    async fn entity_summarize_rest(
+        &self,
+        config: &ConnectionSettings,
+        entity: &str,
+        body: &Value,
+    ) -> Result<Value>;
+
+    /// Execute multiple create/update/delete operations in a single server-side
+    /// transaction via `POST /api/{ver}/entity/_batch`.
+    ///
+    /// Each request in the batch array describes one operation.  All operations
+    /// succeed or fail together — the server rolls back if any request fails.
+    async fn entity_batch_server(&self, config: &ConnectionSettings, body: &Value)
+    -> Result<Value>;
+
+    /// List the webhooks registered on the site via `GET /api/{ver}/webhook/hooks`.
+    ///
+    /// Supports optional `status`, `url`, and pagination query parameters.
+    async fn webhook_hooks_list(
+        &self,
+        config: &ConnectionSettings,
+        params: &[(String, String)],
+    ) -> Result<Value>;
+
+    /// Register a new webhook via `POST /api/{ver}/webhook/hooks`.
+    async fn webhook_hook_create(&self, config: &ConnectionSettings, body: &Value)
+    -> Result<Value>;
+
+    /// Read a single webhook by id via `GET /api/{ver}/webhook/hooks/{record_uuid}`.
+    async fn webhook_hook_read(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// Update an existing webhook via `PUT /api/{ver}/webhook/hooks/{record_uuid}`.
+    async fn webhook_hook_update(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value>;
+
+    /// Delete a webhook via `DELETE /api/{ver}/webhook/hooks/{record_uuid}`.
+    async fn webhook_hook_delete(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// Trigger a test delivery via
+    /// `POST /api/{ver}/webhook/hooks/{record_uuid}/test_connection`.
+    async fn webhook_hook_test_connection(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// List deliveries for a webhook via
+    /// `GET /api/{ver}/webhook/hooks/{hook_id}/deliveries`.
+    async fn webhook_deliveries_list(
+        &self,
+        config: &ConnectionSettings,
+        hook_id: &str,
+        params: &[(String, String)],
+    ) -> Result<Value>;
+
+    /// Read a single delivery via `GET /api/{ver}/webhook/deliveries/{record_uuid}`.
+    async fn webhook_delivery_read(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// Update a delivery via `PUT /api/{ver}/webhook/deliveries/{record_uuid}`.
+    async fn webhook_delivery_update(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value>;
+
+    /// Re-deliver a failed delivery via
+    /// `POST /api/{ver}/webhook/deliveries/{record_uuid}/redeliver`.
+    async fn webhook_delivery_redeliver(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value>;
+
+    /// Read all user subscriptions via
+    /// `GET /api/{ver}/subscription_seat/user_subscriptions`.
+    async fn subscription_user_list(&self, config: &ConnectionSettings) -> Result<Value>;
+
+    /// Assign subscriptions to users via
+    /// `POST /api/{ver}/subscription_seat/user_subscriptions`.
+    async fn subscription_user_assign(
+        &self,
+        config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value>;
 }
 
 #[derive(Debug, Clone)]
@@ -486,7 +613,7 @@ impl RestTransport {
                     "user_password": password,
                 });
                 if let Some(auth_token) = auth_token {
-                    payload["auth_token"] = Value::String(auth_token.to_string());
+                    payload["auth_token"] = Value::String(auth_token.clone());
                 }
                 payload
             }
@@ -544,11 +671,7 @@ impl RestTransport {
         payload: &AccessTokenPayload,
     ) -> Result<()> {
         let expires_at = payload.expires_in.map(|seconds| {
-            let effective_seconds = if seconds > TOKEN_EXPIRY_MARGIN_SECS {
-                seconds - TOKEN_EXPIRY_MARGIN_SECS
-            } else {
-                seconds
-            };
+            let effective_seconds = seconds.saturating_sub(TOKEN_EXPIRY_MARGIN_SECS).max(1);
             Instant::now() + Duration::from_secs(effective_seconds)
         });
 
@@ -563,19 +686,139 @@ impl RestTransport {
         Ok(())
     }
 
-    async fn access_token_response(
+    /// Retrieve a cached refresh token regardless of access-token expiry.
+    ///
+    /// Unlike [`cached_access_token`] — which returns `None` when the access
+    /// token is expired — this method looks through the cache for a refresh
+    /// token even when the access token has already lapsed.  This allows the
+    /// caller to attempt a lightweight `refresh_token` grant before falling
+    /// back to a full credential-based authentication.
+    fn cached_refresh_token(&self, config: &ConnectionSettings) -> Result<Option<String>> {
+        let cache = self.token_cache.lock().map_err(|_| {
+            AppError::internal(TOKEN_CACHE_POISONED).with_operation("read_token_cache")
+        })?;
+        let Some(cached) = cache.as_ref() else {
+            return Ok(None);
+        };
+        if cached.cache_key != Self::token_cache_key(config) {
+            return Ok(None);
+        }
+        Ok(cached.payload.refresh_token.clone())
+    }
+
+    /// Extract an [`AccessTokenPayload`] from a parsed JSON token response.
+    ///
+    /// Shared by both [`request_fresh_access_token`] and [`try_refresh_token`]
+    /// to avoid duplicating the field-extraction logic.
+    fn extract_token_payload(body: &Value) -> Result<AccessTokenPayload> {
+        let access_token = body
+            .get("access_token")
+            .and_then(Value::as_str)
+            .ok_or_else(|| {
+                AppError::auth("ShotGrid access token response is missing `access_token`")
+                    .with_operation("extract_token_payload")
+                    .with_transport(TRANSPORT_REST)
+                    .with_resource("auth/access_token")
+                    .with_expected_shape(
+                        "a JSON object containing a string field `access_token`",
+                    )
+                    .with_hint(
+                        "Verify the credentials and auth mode, then retry the authentication request.",
+                    )
+                    .with_detail("response_body", body.clone())
+            })?;
+
+        Ok(AccessTokenPayload {
+            access_token: access_token.to_string(),
+            token_type: body
+                .get("token_type")
+                .and_then(Value::as_str)
+                .map(ToString::to_string),
+            expires_in: body.get("expires_in").and_then(Value::as_u64),
+            refresh_token: body
+                .get("refresh_token")
+                .and_then(Value::as_str)
+                .map(ToString::to_string),
+        })
+    }
+
+    /// Attempt a lightweight token refresh using a cached `refresh_token`.
+    ///
+    /// Returns `Ok(Some(payload))` on success, `Ok(None)` when no refresh
+    /// token is available, and silently returns `Ok(None)` on server-side
+    /// rejection so the caller can fall back to full credential auth.
+    async fn try_refresh_token(
         &self,
         config: &ConnectionSettings,
-    ) -> Result<AccessTokenPayload> {
-        let debug = Self::is_debug();
+        debug: bool,
+    ) -> Result<Option<AccessTokenPayload>> {
+        let Some(refresh_token) = self.cached_refresh_token(config)? else {
+            return Ok(None);
+        };
 
-        if let Some(cached) = self.cached_access_token(config)? {
-            if debug {
-                eprintln!("[debug] reuse cached access token for {}", config.site);
-            }
-            return Ok(cached);
+        let url = self.build_url(config, "auth/access_token", &[])?;
+        let form: Vec<(&str, &str)> = vec![
+            ("grant_type", "refresh_token"),
+            ("refresh_token", &refresh_token),
+        ];
+
+        if debug {
+            eprintln!(
+                "[debug] attempting token refresh at {} (refresh_token len={})",
+                url,
+                refresh_token.len()
+            );
         }
 
+        let response = match self
+            .client
+            .post(url)
+            .header(ACCEPT, "application/json")
+            .form(&form)
+            .send()
+            .await
+        {
+            Ok(resp) => resp,
+            Err(error) => {
+                if debug {
+                    eprintln!("[debug] token refresh network error, falling back: {error}");
+                }
+                return Ok(None);
+            }
+        };
+
+        // A non-success status means the refresh token was rejected (expired,
+        // revoked, or unsupported by the server).  Fall back silently.
+        if !response.status().is_success() {
+            if debug {
+                eprintln!(
+                    "[debug] token refresh rejected (HTTP {}), falling back to credential auth",
+                    response.status()
+                );
+            }
+            return Ok(None);
+        }
+
+        let body = Self::parse_response(response, TRANSPORT_REST).await?;
+        let payload = Self::extract_token_payload(&body)?;
+        self.store_access_token(config, &payload)?;
+
+        if debug {
+            eprintln!("[debug] token refresh succeeded for {}", config.site);
+        }
+
+        Ok(Some(payload))
+    }
+
+    /// Perform a full credential-based authentication exchange.
+    ///
+    /// Builds the form parameters from [`ConnectionSettings::credentials`],
+    /// POSTs to `auth/access_token`, extracts the payload, and caches it.
+    async fn request_fresh_access_token(
+        &self,
+        config: &ConnectionSettings,
+        debug: bool,
+    ) -> Result<AccessTokenPayload> {
         let url = self.build_url(config, "auth/access_token", &[])?;
 
         let mut form: Vec<(&str, &str)> = Vec::new();
@@ -604,7 +847,7 @@ impl RestTransport {
                 form.push(("grant_type", "session_token"));
                 form.push(("session_token", session_token));
             }
-        };
+        }
 
         if debug {
             let masked_form: Vec<String> = form
@@ -639,33 +882,39 @@ impl RestTransport {
             })?;
 
         let body = Self::parse_response(response, TRANSPORT_REST).await?;
-        let access_token = body
-            .get("access_token")
-            .and_then(Value::as_str)
-            .ok_or_else(|| {
-                AppError::auth("ShotGrid access token response is missing `access_token`")
-                    .with_operation("request_access_token")
-                    .with_transport(TRANSPORT_REST)
-                    .with_resource("auth/access_token")
-                    .with_expected_shape("a JSON object containing a string field `access_token`")
-                    .with_hint("Verify the credentials and auth mode, then retry the authentication request.")
-                    .with_detail("response_body", body.clone())
-            })?;
-
-        let payload = AccessTokenPayload {
-            access_token: access_token.to_string(),
-            token_type: body
-                .get("token_type")
-                .and_then(Value::as_str)
-                .map(ToString::to_string),
-            expires_in: body.get("expires_in").and_then(Value::as_u64),
-            refresh_token: body
-                .get("refresh_token")
-                .and_then(Value::as_str)
-                .map(ToString::to_string),
-        };
+        let payload = Self::extract_token_payload(&body)?;
         self.store_access_token(config, &payload)?;
         Ok(payload)
+    }
+
+    /// Obtain a valid access token, using the fastest available strategy:
+    ///
+    /// 1. **Cached** — return immediately if a non-expired token is cached.
+    /// 2. **Refresh** — attempt a lightweight `refresh_token` grant when a
+    ///    cached refresh token exists (best-effort; failure falls through).
+    /// 3. **Credential auth** — full `client_credentials` / `password` /
+    ///    `session_token` exchange as the final fallback.
+    async fn access_token_response(
+        &self,
+        config: &ConnectionSettings,
+    ) -> Result<AccessTokenPayload> {
+        let debug = Self::is_debug();
+
+        // 1. Fast path — reuse a cached, non-expired token.
+        if let Some(cached) = self.cached_access_token(config)? {
+            if debug {
+                eprintln!("[debug] reuse cached access token for {}", config.site);
+            }
+            return Ok(cached);
+        }
+
+        // 2. Best-effort refresh — cheaper than a full credential exchange.
+        if let Some(refreshed) = self.try_refresh_token(config, debug).await? {
+            return Ok(refreshed);
+        }
+
+        // 3. Full credential-based authentication.
+        self.request_fresh_access_token(config, debug).await
     }
 
     /// Check whether the response is a 429 rate-limit and, if eligible for
@@ -1064,18 +1313,9 @@ impl ShotgridTransport for RestTransport {
         entity: &str,
         id: u64,
     ) -> Result<Value> {
-        self.rpc_request(
-            &config.site,
-            "revive",
-            vec![
-                Self::rpc_auth_params(config),
-                json!({
-                    "type": entity,
-                    "id": id,
-                }),
-            ],
-        )
-        .await
+        let path = entity_instance_path(entity, id);
+        self.authorized_json_request(config, Method::POST, &path, &revive_query(), None)
+            .await
     }
 
     async fn work_schedule_read(&self, config: &ConnectionSettings, body: &Value) -> Result<Value> {
@@ -1527,7 +1767,7 @@ impl ShotgridTransport for RestTransport {
     }
 
     async fn hierarchy_expand(&self, config: &ConnectionSettings, body: &Value) -> Result<Value> {
-        self.authorized_json_request(config, Method::POST, "hierarchy/expand", &[], Some(body))
+        self.authorized_json_request(config, Method::POST, "hierarchy/_expand", &[], Some(body))
             .await
     }
 
@@ -1617,6 +1857,237 @@ impl ShotgridTransport for RestTransport {
         )
         .await
     }
+
+    async fn rest_api_version(&self, site: &str, api_version: &str) -> Result<Value> {
+        let normalized_site = site.trim_end_matches('/');
+        let url_str = format!("{normalized_site}/api/{api_version}/");
+        let url = Url::parse(&url_str).map_err(|error| {
+            AppError::invalid_input(format!("invalid ShotGrid site URL: {error}"))
+                .with_operation("rest_api_version")
+                .with_invalid_field("site")
+                .with_received_value(site)
+        })?;
+
+        let response = self
+            .client
+            .request(Method::GET, url)
+            .header(ACCEPT, "application/json")
+            .send()
+            .await
+            .map_err(|error| {
+                AppError::network(format!(
+                    "could not fetch the REST API version endpoint: {error}"
+                ))
+                .with_operation("rest_api_version")
+                .with_transport(TRANSPORT_REST)
+                .with_resource("/")
+                .retryable(true)
+            })?;
+
+        Self::parse_response(response, TRANSPORT_REST).await
+    }
+
+    async fn openapi_spec(&self, site: &str, api_version: &str, format: &str) -> Result<Value> {
+        let normalized_site = site.trim_end_matches('/');
+        let url_str = format!("{normalized_site}/api/{api_version}/spec.{format}");
+        let url = Url::parse(&url_str).map_err(|error| {
+            AppError::invalid_input(format!("invalid ShotGrid site URL: {error}"))
+                .with_operation("openapi_spec")
+                .with_invalid_field("site")
+                .with_received_value(site)
+        })?;
+
+        let accept = match format {
+            "yaml" | "yml" => "application/x-yaml",
+            _ => "application/json",
+        };
+
+        let response = self
+            .client
+            .request(Method::GET, url)
+            .header(ACCEPT, accept)
+            .send()
+            .await
+            .map_err(|error| {
+                AppError::network(format!(
+                    "could not fetch the OpenAPI specification: {error}"
+                ))
+                .with_operation("openapi_spec")
+                .with_transport(TRANSPORT_REST)
+                .with_resource(format!("spec.{format}"))
+                .retryable(true)
+            })?;
+
+        // For YAML responses we wrap the text in a JSON envelope since the
+        // CLI output layer expects `Value`.
+        if format == "yaml" || format == "yml" {
+            let status = response.status();
+            let text = response.text().await.map_err(|error| {
+                AppError::network(format!("could not read OpenAPI spec response: {error}"))
+                    .with_operation("openapi_spec")
+            })?;
+            if !status.is_success() {
+                return Err(AppError::api(format!(
+                    "ShotGrid returned HTTP {status} for OpenAPI spec"
+                ))
+                .with_operation("openapi_spec")
+                .with_http_status(status.as_u16()));
+            }
+            return Ok(json!({
+                "format": format,
+                "content": text,
+            }));
+        }
+
+        Self::parse_response(response, TRANSPORT_REST).await
+    }
+
+    async fn entity_summarize_rest(
+        &self,
+        config: &ConnectionSettings,
+        entity: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        let path = format!("entity/{}/_summarize", entity_collection_path(entity));
+        self.authorized_json_request(config, Method::POST, &path, &[], Some(body))
+            .await
+    }
+
+    async fn entity_batch_server(
+        &self,
+        config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value> {
+        self.authorized_json_request(config, Method::POST, "entity/_batch", &[], Some(body))
+            .await
+    }
+
+    async fn webhook_hooks_list(
+        &self,
+        config: &ConnectionSettings,
+        params: &[(String, String)],
+    ) -> Result<Value> {
+        self.authorized_json_request(config, Method::GET, "webhook/hooks", params, None)
+            .await
+    }
+
+    async fn webhook_hook_create(
+        &self,
+        config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value> {
+        self.authorized_json_request(config, Method::POST, "webhook/hooks", &[], Some(body))
+            .await
+    }
+
+    async fn webhook_hook_read(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{record_uuid}");
+        self.authorized_json_request(config, Method::GET, &path, &[], None)
+            .await
+    }
+
+    async fn webhook_hook_update(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{record_uuid}");
+        self.authorized_json_request(config, Method::PUT, &path, &[], Some(body))
+            .await
+    }
+
+    async fn webhook_hook_delete(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{record_uuid}");
+        self.authorized_json_request(config, Method::DELETE, &path, &[], None)
+            .await
+    }
+
+    async fn webhook_hook_test_connection(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{record_uuid}/test_connection");
+        self.authorized_json_request(config, Method::POST, &path, &[], None)
+            .await
+    }
+
+    async fn webhook_deliveries_list(
+        &self,
+        config: &ConnectionSettings,
+        hook_id: &str,
+        params: &[(String, String)],
+    ) -> Result<Value> {
+        let path = format!("webhook/hooks/{hook_id}/deliveries");
+        self.authorized_json_request(config, Method::GET, &path, params, None)
+            .await
+    }
+
+    async fn webhook_delivery_read(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/deliveries/{record_uuid}");
+        self.authorized_json_request(config, Method::GET, &path, &[], None)
+            .await
+    }
+
+    async fn webhook_delivery_update(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        let path = format!("webhook/deliveries/{record_uuid}");
+        self.authorized_json_request(config, Method::PUT, &path, &[], Some(body))
+            .await
+    }
+
+    async fn webhook_delivery_redeliver(
+        &self,
+        config: &ConnectionSettings,
+        record_uuid: &str,
+    ) -> Result<Value> {
+        let path = format!("webhook/deliveries/{record_uuid}/redeliver");
+        self.authorized_json_request(config, Method::POST, &path, &[], None)
+            .await
+    }
+
+    async fn subscription_user_list(&self, config: &ConnectionSettings) -> Result<Value> {
+        self.authorized_json_request(
+            config,
+            Method::GET,
+            "subscription_seat/user_subscriptions",
+            &[],
+            None,
+        )
+        .await
+    }
+
+    async fn subscription_user_assign(
+        &self,
+        config: &ConnectionSettings,
+        body: &Value,
+    ) -> Result<Value> {
+        self.authorized_json_request(
+            config,
+            Method::POST,
+            "subscription_seat/user_subscriptions",
+            &[],
+            Some(body),
+        )
+        .await
+    }
 }
 
 /// Build the query parameters used by the schema revive endpoints.
@@ -1624,7 +2095,7 @@ fn revive_query() -> Vec<(String, String)> {
     vec![("revive".to_string(), "true".to_string())]
 }
 
-/// Convert a ShotGrid entity type name (e.g. `"HumanUser"`, `"CustomEntity01"`)
+/// Convert a `ShotGrid` entity type name (e.g. `"HumanUser"`, `"CustomEntity01"`)
 /// into the plural, snake_case REST collection path segment used by the API
 /// (e.g. `"human_users"`, `"custom_entity_01s"`).
 ///
@@ -1747,25 +2218,18 @@ pub(crate) fn plan_entity_delete(api_version: &str, entity: &str, id: u64) -> Re
     }
 }
 
-pub(crate) fn plan_entity_revive(entity: &str, id: u64) -> RequestPlan {
+pub(crate) fn plan_entity_revive(api_version: &str, entity: &str, id: u64) -> RequestPlan {
     RequestPlan {
-        transport: TRANSPORT_RPC,
+        transport: TRANSPORT_REST,
         method: "POST",
-        path: "/api3/json".to_string(),
+        path: format!(
+            "/api/{api_version}/entity/{}/{}",
+            entity_collection_path(entity),
+            id
+        ),
         risk: RiskLevel::Write,
-        query: Vec::new(),
-        body: Some(json!({
-            "method_name": "revive",
-            "params": [
-                {
-                    "type": entity,
-                    "id": id,
-                }
-            ]
-        })),
-        notes: vec![
-            DRY_RUN_NOTE,
-            "RPC auth params are injected from the connection config at execution time",
-        ],
+        query: vec![("revive".to_string(), "true".to_string())],
+        body: None,
+        notes: vec![DRY_RUN_NOTE],
     }
 }

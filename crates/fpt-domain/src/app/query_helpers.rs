@@ -2,7 +2,7 @@ use fpt_core::{AppError, Result};
 use serde_json::Value;
 
 /// Normalize a `filters` value and an optional `filter_operator` into the
-/// canonical RPC shape expected by the ShotGrid REST API.
+/// canonical RPC shape expected by the `ShotGrid` REST API.
 ///
 /// Accepts either:
 /// * A JSON array of filter conditions (wrapped with the resolved operator,

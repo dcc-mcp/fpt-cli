@@ -10,6 +10,7 @@ rust-version = { workspace = true }
 async-trait = { workspace = true }
 fpt-core = { path = "../fpt-core" }
 futures = { workspace = true }
+keyring = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

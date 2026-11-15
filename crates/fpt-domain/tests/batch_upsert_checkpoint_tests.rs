@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use fpt_core::{AppError, Result};
 use fpt_domain::app::batch::OnConflict;
+use fpt_domain::config::ConnectionSettings;
 use fpt_domain::transport::{FindParams, ShotgridTransport, UploadUrlRequest};
 use fpt_domain::{App, AuthMode, ConnectionOverrides};
 
@@ -121,13 +122,13 @@ impl ShotgridTransport for UpsertTransport {
                 // Look for [key, "is", value] pattern
                 let mut found = None;
                 for cond in conditions {
-                    if let Some(arr) = cond.as_array() {
-                        if arr.len() == 3 {
-                            let lookup_key = serde_json::to_string(&arr[2]).unwrap_or_default();
-                            if let Some(existing) = self.existing_by_key.get(&lookup_key) {
-                                found = Some(existing.clone());
-                                break;
-                            }
+                    if let Some(arr) = cond.as_array()
+                        && arr.len() == 3
+                    {
+                        let lookup_key = serde_json::to_string(&arr[2]).unwrap_or_default();
+                        if let Some(existing) = self.existing_by_key.get(&lookup_key) {
+                            found = Some(existing.clone());
+                            break;
                         }
                     }
                 }
@@ -604,6 +605,126 @@ impl ShotgridTransport for UpsertTransport {
     ) -> Result<Value> {
         Err(AppError::not_implemented("unused"))
     }
+
+    async fn rest_api_version(&self, _site: &str, _api_version: &str) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+
+    async fn openapi_spec(&self, _site: &str, _api_version: &str, _format: &str) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+
+    async fn entity_summarize_rest(
+        &self,
+        _config: &fpt_domain::ConnectionSettings,
+        _entity: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+
+    async fn entity_batch_server(
+        &self,
+        _config: &fpt_domain::ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("unused"))
+    }
+
+    async fn webhook_hooks_list(
+        &self,
+        _config: &ConnectionSettings,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hooks_list"))
+    }
+
+    async fn webhook_hook_create(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_create"))
+    }
+
+    async fn webhook_hook_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_read"))
+    }
+
+    async fn webhook_hook_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_update"))
+    }
+
+    async fn webhook_hook_delete(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_delete"))
+    }
+
+    async fn webhook_hook_test_connection(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_hook_test_connection"))
+    }
+
+    async fn webhook_deliveries_list(
+        &self,
+        _config: &ConnectionSettings,
+        _hook_id: &str,
+        _params: &[(String, String)],
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_deliveries_list"))
+    }
+
+    async fn webhook_delivery_read(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_read"))
+    }
+
+    async fn webhook_delivery_update(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_update"))
+    }
+
+    async fn webhook_delivery_redeliver(
+        &self,
+        _config: &ConnectionSettings,
+        _record_uuid: &str,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("webhook_delivery_redeliver"))
+    }
+
+    async fn subscription_user_list(&self, _config: &ConnectionSettings) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_list"))
+    }
+
+    async fn subscription_user_assign(
+        &self,
+        _config: &ConnectionSettings,
+        _body: &Value,
+    ) -> Result<Value> {
+        Err(AppError::not_implemented("subscription_user_assign"))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -874,8 +995,7 @@ async fn upsert_with_on_conflict_update_and_checkpoint() {
 
     // Verify checkpoint file
     let content = std::fs::read_to_string(&checkpoint_path).expect("read checkpoint");
-    let lines: Vec<&str> = content.lines().collect();
-    assert_eq!(lines.len(), 2);
+    assert_eq!(content.lines().count(), 2);
 
     // Verify transport calls
     assert_eq!(transport.create_count(), 1);

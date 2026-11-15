@@ -21,8 +21,8 @@ Release asset names:
 export FPT_VERSION="v0.1.0"
 export FPT_INSTALL_DIR="${FPT_INSTALL_DIR:-$HOME/.local/bin}"
 export FPT_ARCHIVE="fpt-${FPT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-curl -fLO "https://github.com/loonghao/fpt-cli/releases/download/${FPT_VERSION}/${FPT_ARCHIVE}"
-curl -fLO "https://github.com/loonghao/fpt-cli/releases/download/${FPT_VERSION}/fpt-checksums.txt"
+curl -fLO "https://github.com/dcc-mcp/fpt-cli/releases/download/${FPT_VERSION}/${FPT_ARCHIVE}"
+curl -fLO "https://github.com/dcc-mcp/fpt-cli/releases/download/${FPT_VERSION}/fpt-checksums.txt"
 sha256sum -c --ignore-missing fpt-checksums.txt
 tar -xzf "${FPT_ARCHIVE}"
 mkdir -p "$FPT_INSTALL_DIR"
@@ -36,7 +36,7 @@ $FptVersion = "v0.1.0"
 $InstallDir = if ($env:FPT_INSTALL_DIR) { $env:FPT_INSTALL_DIR } else { Join-Path $env:USERPROFILE ".fpt\bin" }
 $Archive = "fpt-$FptVersion-x86_64-pc-windows-msvc.zip"
 $ExtractDir = Join-Path $env:TEMP "fpt-extract"
-Invoke-WebRequest -Uri "https://github.com/loonghao/fpt-cli/releases/download/$FptVersion/$Archive" -OutFile $Archive
+Invoke-WebRequest -Uri "https://github.com/dcc-mcp/fpt-cli/releases/download/$FptVersion/$Archive" -OutFile $Archive
 Expand-Archive -Path $Archive -DestinationPath $ExtractDir -Force
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path (Join-Path $ExtractDir "fpt.exe") -Destination (Join-Path $InstallDir "fpt.exe") -Force
@@ -75,6 +75,7 @@ vx just test
 | `FPT_PASSWORD` | required | `user_password` | ShotGrid user password |
 | `FPT_AUTH_TOKEN` | optional | `user_password` | One-time 2FA token when the site enforces MFA |
 | `FPT_SESSION_TOKEN` | required | `session_token` | Pre-obtained session token |
+| `FPT_PROFILE` | required | secure profile | Profile name created with `fpt auth login`; takes precedence over raw credentials |
 
 ### Auth modes
 - `script` — requires `FPT_SCRIPT_NAME` + `FPT_SCRIPT_KEY`
@@ -86,6 +87,17 @@ Validate credentials before running entity or schema commands.
 
 ```bash
 fpt auth test --output json
+```
+
+### Secure local profile for agent use
+
+Run this in the user's local terminal. The command prompts for secrets without echoing them and stores them in the system credential store. `--open-browser` is a user-login/PAT setup aid, not an OAuth callback.
+
+```bash
+fpt auth login --profile gamedemo --site https://gamedemo.shotgrid.autodesk.com \
+  --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile gamedemo --output json
+fpt auth logout --profile gamedemo
 ```
 
 ### Example: script auth (bash)
@@ -150,3 +162,4 @@ fpt auth test --output pretty-json
 - Treat `FPT_*` as the primary namespace.
 - Use `SG_*` only as fallback compatibility inputs.
 - Add `FPT_AUTH_TOKEN` when the ShotGrid site requires 2FA.
+- For agent workloads, prefer `FPT_PROFILE`; never put a password, PAT, or session token in agent messages or MCP metadata.

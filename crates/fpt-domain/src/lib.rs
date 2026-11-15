@@ -1,4 +1,18 @@
+//! `fpt-domain` — business logic and transport layer for ShotGrid/FPT operations.
+//!
+//! This crate contains the [`App`] facade, the [`ShotgridTransport`] trait with
+//! its default [`RestTransport`] implementation, connection/config resolution,
+//! the filter DSL parser, and all command-level capability specifications.
+//!
+//! Library consumers (CLI, FFI, PyO3 bindings) depend on `fpt-domain` for the
+//! full ShotGrid domain model without any CLI argument parsing.
+
 #![allow(clippy::result_large_err)]
+// `async_trait` adds `#[must_use]` to every method of `ShotgridTransport`, whose
+// methods already return the `#[must_use]` `Result` alias. Clippy 1.99 flags that
+// duplication as `double_must_use`; the attribute comes from the macro, so there
+// is no source-level way to remove one of the two.
+#![allow(clippy::double_must_use)]
 
 pub mod app;
 pub mod capability;
@@ -9,7 +23,8 @@ pub mod transport;
 pub use app::App;
 pub use config::{
     AuthMode, ConnectionOverrides, ConnectionSettings, Credentials, PersistedConnectionConfig,
-    api_version_or_default, config_file_path, load_persisted_config, save_persisted_config,
+    PersistedConnectionProfile, SecureProfileSecrets, api_version_or_default, config_file_path,
+    load_persisted_config, remove_profile, save_persisted_config, save_profile,
 };
 pub use filter_dsl::parse_filter_dsl;
 pub use transport::{

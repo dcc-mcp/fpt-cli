@@ -299,13 +299,13 @@ fn normalize_search_filters(value: Value, field_name: &str) -> Result<Value> {
         }
         Value::Object(ref map) => {
             // Validate nested filter conditions inside the object form too.
-            if let Some(inner_filters) = map.get("filters") {
-                if let Some(arr) = inner_filters.as_array() {
-                    let normalized = normalize_filter_conditions(arr.clone())?;
-                    let mut result = map.clone();
-                    result.insert("filters".to_string(), Value::Array(normalized));
-                    return Ok(Value::Object(result));
-                }
+            if let Some(inner_filters) = map.get("filters")
+                && let Some(arr) = inner_filters.as_array()
+            {
+                let normalized = normalize_filter_conditions(arr.clone())?;
+                let mut result = map.clone();
+                result.insert("filters".to_string(), Value::Array(normalized));
+                return Ok(Value::Object(result));
             }
             Ok(value)
         }
@@ -320,7 +320,7 @@ fn normalize_search_filters(value: Value, field_name: &str) -> Result<Value> {
     }
 }
 
-/// Well-known ShotGrid entity-link field name patterns.
+/// Well-known `ShotGrid` entity-link field name patterns.
 ///
 /// Fields with these names or prefixes typically expect entity-link objects
 /// rather than bare scalar ids.
@@ -395,14 +395,12 @@ fn validate_entity_link_condition(items: &[Value]) -> Result<()> {
         return Ok(());
     }
 
-    let field = match items[0].as_str() {
-        Some(f) => f,
-        None => return Ok(()),
+    let Some(field) = items[0].as_str() else {
+        return Ok(());
     };
 
-    let operator = match items[1].as_str() {
-        Some(op) => op,
-        None => return Ok(()),
+    let Some(operator) = items[1].as_str() else {
+        return Ok(());
     };
 
     // Only check `is` and `is_not` operators for entity-link issues.
@@ -441,7 +439,7 @@ fn validate_entity_link_condition(items: &[Value]) -> Result<()> {
     Ok(())
 }
 
-/// Attempt to infer the ShotGrid entity type from a field name.
+/// Attempt to infer the `ShotGrid` entity type from a field name.
 ///
 /// This is best-effort and covers common conventions:
 /// - `project` → `Project`

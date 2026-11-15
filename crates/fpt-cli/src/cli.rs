@@ -7,6 +7,6 @@ pub use commands::{
     ConfigCommands, ConfigSetArgs, DownloadCommands, EntityCommands, EventLogCommands,
     FilmstripCommands, FollowersCommands, HierarchyCommands, InspectCommands, LicenseCommands,
     NoteCommands, PreferencesCommands, ScheduleCommands, SchemaCommands, SelfCommands,
-    SelfUpdateArgs, ServerCommands, ThumbnailCommands, UploadCommands, UserCommands,
-    WorkScheduleCommands,
+    SelfUpdateArgs, ServerCommands, SubscriptionCommands, ThumbnailCommands, UploadCommands,
+    UserCommands, WebhookCommands, WorkScheduleCommands,
 };

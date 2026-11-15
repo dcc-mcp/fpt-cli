@@ -2,8 +2,8 @@ use crate::cli::{
     ActivityCommands, AuthCommands, BatchEntityCommands, Cli, Commands, DownloadCommands,
     EntityCommands, EventLogCommands, FilmstripCommands, FollowersCommands, HierarchyCommands,
     InspectCommands, LicenseCommands, NoteCommands, PreferencesCommands, ScheduleCommands,
-    SchemaCommands, SelfCommands, ServerCommands, ThumbnailCommands, UploadCommands, UserCommands,
-    WorkScheduleCommands,
+    SchemaCommands, SelfCommands, ServerCommands, SubscriptionCommands, ThumbnailCommands,
+    UploadCommands, UserCommands, WebhookCommands, WorkScheduleCommands,
 };
 use crate::config;
 use crate::self_update;
@@ -24,9 +24,13 @@ pub async fn run(cli: Cli) -> Result<Value> {
         },
         Commands::Auth(command) => match command {
             AuthCommands::Test => app.auth_test(connection).await,
+            AuthCommands::Login(args) => config::login(connection, args.open_browser),
+            AuthCommands::Logout => config::logout(connection.profile.as_deref()),
         },
         Commands::Server(command) => match command {
             ServerCommands::Info => app.server_info(connection).await,
+            ServerCommands::Version => app.rest_api_version(connection).await,
+            ServerCommands::OpenapiSpec { format } => app.openapi_spec(connection, &format).await,
         },
         Commands::Schema(command) => match command {
             SchemaCommands::Entities => app.schema_entities(connection).await,
@@ -194,6 +198,10 @@ pub async fn run(cli: Cli) -> Result<Value> {
                 app.entity_count(connection, &entity, input, filter_dsl)
                     .await
             }
+            EntityCommands::SummarizeRest { entity, input } => {
+                let body = required_json_input(input)?;
+                app.entity_summarize_rest(connection, &entity, body).await
+            }
             EntityCommands::Batch(command) => match command {
                 BatchEntityCommands::Get { entity, input } => {
                     let body = required_json_input(input)?;
@@ -273,6 +281,10 @@ pub async fn run(cli: Cli) -> Result<Value> {
                 BatchEntityCommands::Count { input } => {
                     let body = required_json_input(input)?;
                     app.entity_batch_count(connection, body).await
+                }
+                BatchEntityCommands::Server { input } => {
+                    let body = required_json_input(input)?;
+                    app.entity_batch_server(connection, body).await
                 }
             },
         },
@@ -422,6 +434,9 @@ pub async fn run(cli: Cli) -> Result<Value> {
                 let input = read_json_input(input.as_deref())?;
                 app.schedule_work_day_rules(connection, input).await
             }
+            ScheduleCommands::ReadOne { rule_id } => {
+                app.schedule_work_day_rules_read(connection, rule_id).await
+            }
             ScheduleCommands::Update { rule_id, input } => {
                 let body = required_json_input(input)?;
                 app.schedule_work_day_rules_update(connection, rule_id, body)
@@ -438,6 +453,53 @@ pub async fn run(cli: Cli) -> Result<Value> {
         },
         Commands::License(command) => match command {
             LicenseCommands::Get => app.license(connection).await,
+        },
+        Commands::Webhook(command) => match command {
+            WebhookCommands::HooksList { input } => {
+                let input = read_json_input(input.as_deref())?;
+                app.webhook_hooks_list(connection, input).await
+            }
+            WebhookCommands::HookCreate { input } => {
+                let body = required_json_input(input)?;
+                app.webhook_hook_create(connection, body).await
+            }
+            WebhookCommands::HookRead { hook_id } => {
+                app.webhook_hook_read(connection, &hook_id).await
+            }
+            WebhookCommands::HookUpdate { hook_id, input } => {
+                let body = required_json_input(input)?;
+                app.webhook_hook_update(connection, &hook_id, body).await
+            }
+            WebhookCommands::HookDelete { hook_id } => {
+                app.webhook_hook_delete(connection, &hook_id).await
+            }
+            WebhookCommands::HookTest { hook_id } => {
+                app.webhook_hook_test_connection(connection, &hook_id).await
+            }
+            WebhookCommands::DeliveriesList { hook_id, input } => {
+                let input = read_json_input(input.as_deref())?;
+                app.webhook_deliveries_list(connection, &hook_id, input)
+                    .await
+            }
+            WebhookCommands::DeliveryRead { delivery_id } => {
+                app.webhook_delivery_read(connection, &delivery_id).await
+            }
+            WebhookCommands::DeliveryUpdate { delivery_id, input } => {
+                let body = required_json_input(input)?;
+                app.webhook_delivery_update(connection, &delivery_id, body)
+                    .await
+            }
+            WebhookCommands::DeliveryRedeliver { delivery_id } => {
+                app.webhook_delivery_redeliver(connection, &delivery_id)
+                    .await
+            }
+        },
+        Commands::Subscription(command) => match command {
+            SubscriptionCommands::UserList => app.subscription_user_list(connection).await,
+            SubscriptionCommands::UserAssign { input } => {
+                let body = required_json_input(input)?;
+                app.subscription_user_assign(connection, body).await
+            }
         },
         Commands::SelfCommand(command) => match command {
             SelfCommands::Update(args) => self_update::run(args).await,

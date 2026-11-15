@@ -78,6 +78,16 @@ impl Drop for TempConfigPath {
 
 #[test]
 fn resolves_script_auth_with_explicit_mode() {
+    let _lock = env_lock().lock().expect("env lock");
+    let config_path = TempConfigPath::new("script-explicit");
+    let _guard = EnvGuard::set(&[
+        ("FPT_CONFIG_PATH", Some(config_path.path_str())),
+        ("FPT_PROFILE", None),
+        ("SG_PROFILE", None),
+        ("FPT_AUTH_MODE", None),
+        ("SG_AUTH_MODE", None),
+    ]);
+
     let settings = ConnectionSettings::resolve(ConnectionOverrides {
         site: Some("https://example.shotgrid.autodesk.com".to_string()),
         auth_mode: Some(AuthMode::Script),

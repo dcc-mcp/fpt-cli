@@ -5,6 +5,13 @@ use super::common::AuthModeArg;
 
 #[derive(Debug, Args, Clone, Default)]
 pub struct ConnectionArgs {
+    #[arg(
+        long,
+        global = true,
+        help = "Use a secure local FPT credential profile"
+    )]
+    pub profile: Option<String>,
+
     #[arg(long, global = true)]
     pub site: Option<String>,
 
@@ -36,6 +43,7 @@ pub struct ConnectionArgs {
 impl From<ConnectionArgs> for ConnectionOverrides {
     fn from(value: ConnectionArgs) -> Self {
         Self {
+            profile: value.profile,
             site: value.site,
             auth_mode: value.auth_mode.map(Into::into),
             script_name: value.script_name,

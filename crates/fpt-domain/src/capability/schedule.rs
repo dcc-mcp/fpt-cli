@@ -29,6 +29,15 @@ const SCHEDULE_WORK_DAY_RULES_CREATE_NOTES: &[&str] = &[
     "Input must be a JSON object containing rule fields such as `date`, `description`, and `project`",
 ];
 
+const SCHEDULE_WORK_DAY_RULES_READ_EXAMPLES: &[&str] = &[
+    "fpt schedule work-day-rules-read 42 --site ... --auth-mode script --script-name ... --script-key ...",
+];
+
+const SCHEDULE_WORK_DAY_RULES_READ_NOTES: &[&str] = &[
+    "Read a single work day rule by its record id",
+    "Uses the REST GET schedule/work_day_rules/{id} endpoint",
+];
+
 const SCHEDULE_WORK_DAY_RULES_DELETE_EXAMPLES: &[&str] = &[
     "fpt schedule work-day-rules-delete 42 --site ... --auth-mode script --script-name ... --script-key ...",
 ];
@@ -79,6 +88,20 @@ pub const SCHEDULE_WORK_DAY_RULES_CREATE_SPEC: CommandSpec = CommandSpec {
     output: "json",
     examples: SCHEDULE_WORK_DAY_RULES_CREATE_EXAMPLES,
     notes: SCHEDULE_WORK_DAY_RULES_CREATE_NOTES,
+};
+
+pub const SCHEDULE_WORK_DAY_RULES_READ_SPEC: CommandSpec = CommandSpec {
+    name: "schedule.work-day-rules-read",
+    summary: "Read a single work day rule by its record id from the ShotGrid scheduling system",
+    risk: RiskLevel::Read,
+    implemented: true,
+    supports_dry_run: false,
+    preferred_transport: "rest",
+    fallback_transport: None,
+    input: "work day rule record id",
+    output: "json",
+    examples: SCHEDULE_WORK_DAY_RULES_READ_EXAMPLES,
+    notes: SCHEDULE_WORK_DAY_RULES_READ_NOTES,
 };
 
 pub const SCHEDULE_WORK_DAY_RULES_DELETE_SPEC: CommandSpec = CommandSpec {
