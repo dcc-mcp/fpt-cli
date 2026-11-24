@@ -100,3 +100,8 @@ run *args:
 
 capabilities:
     vx cargo run -p fpt-cli -- capabilities --output json
+
+
+# Verify the pinned VX and just toolchain.
+toolchain-ci:
+    vx just@1.58 --version
