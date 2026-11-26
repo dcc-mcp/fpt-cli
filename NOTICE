@@ -1,0 +1,18 @@
+NOTICE
+
+Repository-owned source is Copyright (c) 2026 Long Hao (Hal Long).
+
+This repository is part of the DCC-MCP organization, which publishes and
+maintains the fpt-cli command-line tool.
+This project is distributed under the MIT License. See LICENSE. Third-party
+libraries, host applications, SDKs, runtimes, bundled binaries, models, sample
+assets, generated files, upstream packages, and other included material remain
+under their own licenses and notices. Keep those notices with any redistribution.
+
+DCC-MCP and fpt-cli names and branding identify this project and its maintainers.
+This notice does not grant rights to third-party trademarks or imply endorsement
+by a host vendor.
+
+Commercial use is permitted. Mentioning DCC-MCP and fpt-cli in product credits, or
+contacting maintainers about commercial distribution, is appreciated but optional
+and is not a license condition.
